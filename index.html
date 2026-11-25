@@ -598,6 +598,39 @@ function whenOf(b){
   return new Date(y, (m||1)-1, d||1, hh||0, mm||0).getTime();
 }
 function onlyDigits(s){ return String(s||'').replace(/\D/g,''); }
+/* ---- aviso de cancelamento para o dono ---- */
+function ownerWa(){
+  const d = onlyDigits(S.ownerWhats || '');
+  if(!d) return '';
+  return (d.length <= 11 ? '55' + d : d);
+}
+function msgCancelCliente(b){
+  const nome = (b && b.client && b.client.name) ? String(b.client.name).split(' ')[0] : '';
+  return [
+    'Olá ' + (nome || '') + '! Aqui é da ' + S.shop + '.',
+    '',
+    'Seu horário de ' + (b ? b.serviceName : '') + ' em ' + (b ? fmtDate(b.date) : '') + ' às ' + (b ? String(b.time).slice(0,5) : '') + ' foi cancelado.',
+    '',
+    'Quando quiser, é só marcar outro horário pelo app. Qualquer coisa me chama por aqui.'
+  ].join('\n');
+}
+function msgCancelamento(b, quem){
+  const nome = (b && b.client && b.client.name) ? String(b.client.name).split(' ')[0] : '';
+  const quando = b ? (fmtDate(b.date) + ' às ' + String(b.time).slice(0,5)) : '';
+  const serv   = b ? (b.serviceName || '') : '';
+  const linha  = [
+    '❌ *Cancelamento* — ' + (quem || 'cliente'),
+    '',
+    'Cliente: ' + (nome || '—'),
+    'WhatsApp: ' + (b && b.client ? b.client.wa : '—'),
+    'Serviço: ' + (serv || '—'),
+    'Quando: ' + quando,
+    'Valor: ' + (b ? brl(b.total) : '—') + (b && b.code ? ' · código ' + b.code : ''),
+    '',
+    'O horário já voltou a ficar livre na agenda.'
+  ];
+  return linha.join('\n');
+}
 function waLink(phone, text){
   let p = onlyDigits(phone);
   if(p.length && p.length <= 11) p = '55' + p;
@@ -912,7 +945,12 @@ function viewMeus(){
         </div>
         <div class="rt"><span class="badge ${b.status}">${b.status === 'pago' ? 'Pago' : b.status === 'cancelado' ? 'Cancelado' : 'Pendente'}</span></div>
       </div>
-      ${b.status === 'cancelado' ? '' : `<div class="mini">
+      ${b.status === 'cancelado'
+        ? `<div class="mini">
+        <a class="btn wa sm" style="text-decoration:none;text-align:center" target="_blank"
+           href="${waLink(ownerWa(), msgCancelamento(b, 'pelo app'))}">Avisar o Igor</a>
+      </div>`
+        : `<div class="mini">
         <button class="btn ghost sm" data-act="meus-cancel" data-id="${esc(b.id)}">Cancelar</button>
       </div>`}
     </div>`;
@@ -924,7 +962,20 @@ function viewMeus(){
     return `<div class="empty"><span class="e">🎫</span>Você ainda não tem horário marcado.<br><br>
       <button class="btn" style="display:inline-block;width:auto;padding:12px 22px" data-act="tab" data-tab="agendar">Marcar agora</button></div>`;
   }
+  const cancelado = mine.filter(b => b.status === 'cancelado').slice(-1)[0];
+  const aviso = cancelado ? `
+    <div class="card" style="border-color:rgba(224,166,58,.42);margin-top:14px">
+      <p style="margin:0 0 10px;font-size:13px;line-height:1.5">
+        <b style="color:#f0c477">Avisar a barbearia?</b><br>
+        Seu horário foi cancelado, mas o Igor não fica sabendo sozinho.
+        Mande a mensagem no WhatsApp dele para ele liberar o horário.
+      </p>
+      <a class="btn wa sm" style="text-decoration:none;text-align:center;display:block"
+         target="_blank" href="${waLink(ownerWa(), msgCancelamento(cancelado, 'pelo app'))}">Avisar o Igor no WhatsApp</a>
+    </div>` : '';
+
   return `
+  ${aviso}
   <h2 class="sec" style="margin-top:26px">Próximos</h2>
   ${up.length ? up.map(card).join('') : '<div class="empty" style="padding:26px">Nenhum horário futuro.</div>'}
   ${past.length ? '<h2 class="sec">Histórico</h2>' + past.map(card).join('') : ''}
@@ -1017,6 +1068,7 @@ function viewAgendaDia(){
         ${b.status === 'pendente' ? `<button class="btn sm" data-act="adm-pay" data-id="${esc(b.id)}">Receber ${brl(b.total)}</button>` : ''}
         ${b.status !== 'cancelado' ? `<a class="btn wa sm" style="text-decoration:none;text-align:center" target="_blank" href="${waLink(b.client.wa, msg)}">WhatsApp</a>` : ''}
         ${b.status !== 'cancelado' ? `<button class="btn danger sm" data-act="adm-cancel" data-id="${esc(b.id)}">Cancelar</button>` : ''}
+        ${b.status === 'cancelado' ? `<a class="btn ghost sm" style="text-decoration:none;text-align:center" target="_blank" href="${waLink(b.client.wa, msgCancelCliente(b))}">Avisar cliente</a>` : ''}
       </div>
     </div>`;
   }).join('') : '<div class="empty"><span class="e">💈</span>Nenhum agendamento neste dia.</div>';
@@ -1248,7 +1300,11 @@ document.addEventListener('click', async e => {
       if(wa == null) return;
     }
     const r = await API.cancel(id, wa);
-    if(r.ok){ toast('Horário cancelado'); await loadMine(); }
+    if(r.ok){
+      U.tab = 'meus';
+      toast('Cancelado. Avise o barbeiro no WhatsApp.');
+      await loadMine();
+    }
     else toast(r.error === 'whatsapp_nao_confere' ? 'WhatsApp não confere' : 'Não consegui cancelar');
     return;
   }
