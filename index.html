@@ -272,7 +272,7 @@ const DEFAULTS = {
   closeHour: 17,
   lunchHour: 12,
   pin: '1234',
-  depositPct: 30,
+  depositPct: 100,
   maxActive: 1,
   services: [
     { id:'corte-adulto',   name:'Corte Adulto',        price:35, ico:'✂️' },
@@ -690,9 +690,27 @@ function normalizaQuote(q){
 }
 
 /* ---- aviso do sinal, reutilizado em todas as telas ---- */
-function depPct(){ return Number(S.depositPct != null ? S.depositPct : 30); }
-function temSinal(){ return depPct() > 0; }
+function depPct(){ return Number(S.depositPct != null ? S.depositPct : 100); }
+function temSinal(){ return depPct() > 0 && depPct() < 100; }
+function pagtoIntegral(){ return depPct() >= 100; }
 function avisoSinal(q){
+  const total = q && q.total != null ? Number(q.total) : 0;
+
+  // ----- pagamento integral (padrão atual) -----
+  if(pagtoIntegral()){
+    return `
+    <div class="depbox">
+      <div class="dt">💳 Pagamento integral do serviço</div>
+      <p>Para confirmar o agendamento, o valor total de <span class="strong">${brl(total)}</span>
+         é pago agora. Não há nada a pagar na barbearia no dia do atendimento.</p>
+      <p class="strong" style="margin-top:10px">Precisou desmarcar? Fale com o Igor no WhatsApp.</p>
+      <p>É ele quem combina com você a <span class="strong">remarcação</span> ou a
+         <span class="strong">devolução do valor</span>, caso a caso.</p>
+      <p style="font-size:11.5px;color:#b8b0a0;margin-top:8px">Ao confirmar, você concorda com esta condição.</p>
+    </div>`;
+  }
+
+  // ----- sinal parcial (se o Igor voltar a usar percentual menor) -----
   if(!temSinal()) return '';
   const dep = q && q.deposit != null ? q.deposit : 0;
   const rest = q && q.rest != null ? q.rest : 0;
@@ -702,7 +720,7 @@ function avisoSinal(q){
     <p>Você está pagando <span class="strong">${brl(dep)}</span> (${depPct()}% do valor) apenas para
        <span class="strong">manter seu agendamento ativo</span>. O restante de <span class="strong">${brl(rest)}</span>
        é pago no dia, na barbearia.</p>
-    <p class="strong" style="margin-top:10px">Em caso de cancelamento, o sinal não será restituído.</p>
+    <p class="strong" style="margin-top:10px">Precisou desmarcar? Fale com o Igor no WhatsApp.</p>
     <p style="font-size:11.5px;color:#b8b0a0;margin-top:8px">Ao confirmar, você concorda com esta condição.</p>
   </div>`;
 }
@@ -929,7 +947,7 @@ function viewPagamento(){
       <div class="l"><span>Sinal para reservar (${depPct()}%)</span><b style="color:#f0c477">${brl(q.deposit)}</b></div>
       <div class="l"><span>Restante no dia</span><b>${brl(q.rest)}</b></div>
       <div class="tot"><span>Pagar agora</span><span style="color:#f0c477">${brl(q.deposit)}</span></div>
-      ` : `<div class="tot"><span>Total</span><span>${brl(q.total)}</span></div>`}
+      ` : `<div class="tot"><span>Total a pagar</span><span>${brl(q.total)}</span></div>`}
     </div>`;
 
   const opt = (m, ico, nm, mt) => `<div class="opt ${U.method===m?'sel':''}" data-act="method" data-m="${m}">
@@ -1012,19 +1030,16 @@ function viewDone(){
     <div class="l"><span>WhatsApp</span><b>${esc(b.client.wa)}</b></div>
     <div class="l"><span>Pagamento</span><b>${b.pay.method === 'pix' ? 'Pix' : 'Cartão'} ${b.pay.last4 ? '••'+esc(b.pay.last4) : ''}</b></div>
     <div class="l"><span>Status</span><b style="color:${b.status==='pago'?'#8de3bb':'#f0c477'}">${b.status === 'pago' ? 'Pago' : 'A confirmar'}</b></div>
-    ${Number(b.deposit) > 0 ? `
-    <div class="l"><span>Total do serviço</span><b>${brl(b.total)}</b></div>
-    <div class="l"><span>Sinal pago agora</span><b style="color:#8de3bb">${brl(b.deposit)}</b></div>
-    <div class="tot"><span>Pagar no dia</span><span style="color:#f0c477">${brl(Number(b.total) - Number(b.deposit))}</span></div>
-    ` : `<div class="tot"><span>Total</span><span>${brl(b.total)}</span></div>`}
+    <div class="tot"><span>Total pago</span><span>${brl(b.total)}</span></div>
   </div>
-  ${Number(b.deposit) > 0 ? `
   <div class="depbox">
-    <div class="dt">⚠️ Guarde esta informação</div>
-    <p>O valor de <span class="strong">${brl(b.deposit)}</span> é o sinal que mantém seu horário reservado.
-       O restante de <span class="strong">${brl(Number(b.total) - Number(b.deposit))}</span> você paga no dia.</p>
-    <p class="strong" style="margin-top:10px">Se você cancelar, o sinal não será devolvido.</p>
-  </div>` : ''}
+    <div class="dt">📌 Guarde esta informação</div>
+    <p>Seu horário está reservado e <span class="strong">pago por inteiro</span> —
+       nada a pagar no dia do atendimento.</p>
+    <p class="strong" style="margin-top:10px">Precisou desmarcar? Fale com o Igor no WhatsApp.</p>
+    <p>É ele quem combina com você a <span class="strong">remarcação</span> ou a
+       <span class="strong">devolução do valor</span>.</p>
+  </div>
   <div class="actions">
     <button class="btn" data-act="new">Agendar outro</button>
     <button class="btn ghost" data-act="tab" data-tab="meus">Ver meus horários</button>
@@ -1044,7 +1059,7 @@ function viewMeus(){
         <div class="tm">${b.time}</div>
         <div>
           <div class="nm">${esc(b.serviceName)}</div>
-          <div class="mt">${fmtDate(b.date)} · ${Number(b.deposit) > 0 ? brl(b.deposit) + ' de sinal · ' + brl(Number(b.total)-Number(b.deposit)) + ' no dia' : brl(b.total)}</div>
+          <div class="mt">${fmtDate(b.date)} · ${brl(b.total)}</div>
         </div>
         <div class="rt"><span class="badge ${b.status}">${b.status === 'pago' ? 'Pago' : b.status === 'cancelado' ? 'Cancelado' : 'Pendente'}</span></div>
       </div>
@@ -1131,9 +1146,6 @@ function viewAgendaDia(){
   const d = U.adminDate;
   const list = (U.adminDay || []).slice().sort((a,b) => a.time.localeCompare(b.time));
   const act = list.filter(b => b.status !== 'cancelado');
-  const temDep = act.some(b => Number(b.deposit) > 0);
-  const sinais  = act.reduce((s,b) => s + Number(b.deposit || 0), 0);
-  const aReceber = act.reduce((s,b) => s + (Number(b.total) - Number(b.deposit || 0)), 0);
   const pago = act.filter(b => b.status === 'pago').reduce((s,b) => s + b.total, 0);
   const pend = act.filter(b => b.status === 'pendente').reduce((s,b) => s + b.total, 0);
 
@@ -1150,10 +1162,9 @@ function viewAgendaDia(){
   const kpi = `
     <div class="kpi">
       <div><div class="k">Cortes</div><div class="v">${act.length}</div></div>
-      <div><div class="k">${temDep ? 'Sinais' : 'Recebido'}</div><div class="v g">${brl(temDep ? sinais : pago)}</div></div>
-      <div><div class="k">${temDep ? 'No balcão' : 'A receber'}</div><div class="v y">${brl(temDep ? aReceber : pend)}</div></div>
-    </div>
-    ${temDep ? `<p class="tinynote" style="margin-top:-4px">Sinal já pago · o restante o cliente paga na barbearia</p>` : ''}`;
+      <div><div class="k">Recebido</div><div class="v g">${brl(pago)}</div></div>
+      <div><div class="k">A receber</div><div class="v y">${brl(pend)}</div></div>
+    </div>`;
 
   const cards = list.length ? list.map(b => {
     const msg = 'Olá ' + (b.client.name.split(' ')[0]||'') + '! Aqui é da ' + S.shop + '. Confirmando seu ' + b.serviceName + ' ' + fmtDate(b.date) + ' às ' + b.time + '. Valor ' + brl(b.total) + '. Qualquer coisa me chama por aqui.';
@@ -1164,7 +1175,7 @@ function viewAgendaDia(){
         <div style="min-width:0">
           <div class="nm">${esc(b.client.name)}</div>
           <div class="mt">${esc(b.serviceName)} · ${brl(b.total)}${b.coupon? ' · cupom '+esc(b.coupon):''}</div>
-          ${Number(b.deposit) > 0 ? `<div class="mt" style="color:#f0c477">Sinal pago ${brl(b.deposit)} · falta ${brl(Number(b.total)-Number(b.deposit))}</div>` : ''}
+
           <div class="mt">${esc(b.client.wa)}${b.client.email ? ' · ' + esc(b.client.email) : ''}</div>
         </div>
         <div class="rt">
@@ -1173,7 +1184,7 @@ function viewAgendaDia(){
         </div>
       </div>
       <div class="mini">
-        ${b.status === 'pendente' ? `<button class="btn sm" data-act="adm-pay" data-id="${esc(b.id)}">Receber ${brl(Number(b.total) - Number(b.deposit || 0))}</button>` : ''}
+        ${b.status === 'pendente' ? `<button class="btn sm" data-act="adm-pay" data-id="${esc(b.id)}">Receber ${brl(b.total)}</button>` : ''}
         ${b.status !== 'cancelado' ? `<a class="btn wa sm" style="text-decoration:none;text-align:center" target="_blank" href="${waLink(b.client.wa, msg)}">WhatsApp</a>` : ''}
         ${b.status !== 'cancelado' ? `<button class="btn danger sm" data-act="adm-cancel" data-id="${esc(b.id)}">Cancelar</button>` : ''}
         ${b.status === 'cancelado' ? `<a class="btn ghost sm" style="text-decoration:none;text-align:center" target="_blank" href="${waLink(b.client.wa, msgCancelCliente(b))}">Avisar cliente</a>` : ''}
@@ -1249,8 +1260,8 @@ function viewAjustes(){
     <label class="f"><span>Instagram</span><input class="inp" id="s-handle" value="${esc(S.handle)}"></label>
     <label class="f"><span>Nome do dono</span><input class="inp" id="s-owner" value="${esc(S.ownerName||'')}" placeholder="Igor"></label>
     <label class="f"><span>WhatsApp do dono</span><input class="inp" id="s-wa" inputmode="numeric" value="${esc(S.ownerWhats)}" placeholder="(11) 90000-0000"></label>
-    <label class="f"><span>Sinal para reservar (%)</span><input class="inp" id="s-dep" inputmode="numeric" value="${depPct()}" placeholder="30"></label>
-    <p class="tinynote" style="margin-top:-6px">Percentual cobrado para segurar o horário. O restante é pago na barbearia. Use 0 para não cobrar sinal.</p>
+    <label class="f"><span>Cobrança na reserva (% do serviço)</span><input class="inp" id="s-dep" inputmode="numeric" value="${depPct()}" placeholder="100"></label>
+    <p class="tinynote" style="margin-top:-6px">100 = o cliente paga o serviço inteiro para agendar (padrão atual). Abaixo disso, ele paga uma parte agora e o resto na barbearia. Use 0 para não cobrar nada.</p>
     <label class="f"><span>Reservas ativas por WhatsApp</span><input class="inp" id="s-maxwa" inputmode="numeric" value="${Number(S.maxActive||0)}" placeholder="1"></label>
     <p class="tinynote" style="margin-top:-6px">Quantos horários futuros o mesmo número pode ter ao mesmo tempo. 1 impede que uma pessoa encha a agenda. Use 0 para não limitar.</p>
     ${cloud() ? '' : `<label class="f"><span>PIN do painel</span><input class="inp" id="s-pin" inputmode="numeric" maxlength="6" value="${esc(S.pin)}"></label>`}
