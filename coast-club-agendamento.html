@@ -1,0 +1,1434 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080b11">
+<title>Coast Club & Barber Shop · Agendamento</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Coast Club">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#080b11; --bg2:#0d1219; --card:#111821; --card2:#18222d; --line:#233040;
+  --txt:#f4f2ee; --dim:#8f9bab; --gold:#c9a24d; --gold2:#e3c896;
+  --ok:#3fb27f; --warn:#e0a63a; --err:#e05656;
+  --r:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:radial-gradient(1100px 560px at 50% -12%,#152030 0%,var(--bg) 58%) fixed,var(--bg);
+  color:var(--txt);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  padding-bottom:92px;min-height:100vh;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.01em}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input,select{font:inherit;color:inherit}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);
+  background:linear-gradient(180deg,rgba(11,11,13,.96),rgba(11,11,13,.78));border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:12px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mark{width:36px;height:36px;border-radius:10px;flex:0 0 auto;
+  object-fit:contain;display:block;background:#080b11;
+  box-shadow:0 4px 14px rgba(0,0,0,.5),0 0 0 1px rgba(201,162,77,.35)}
+.brand b{display:block;font-size:14.5px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand span{display:block;font-size:11.5px;color:var(--dim);letter-spacing:.04em}
+.pill{margin-left:auto;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--gold2);border:1px solid rgba(201,162,77,.35);background:rgba(201,162,77,.08);
+  padding:6px 10px;border-radius:999px;white-space:nowrap}
+
+.hero{padding:18px 0 6px}
+.hero-logo{width:132px;height:auto;display:block;margin:0 auto 14px;border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 0 1px rgba(201,162,77,.22)}
+.hero h1{font-size:26px;line-height:1.15}
+.hero h1 em{font-style:normal;color:var(--gold2)}
+.hero p{color:var(--dim);margin:8px 0 0;font-size:14px}
+.avail{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{font-size:12px;color:var(--dim);border:1px solid var(--line);background:var(--card);
+  padding:6px 10px;border-radius:999px}
+.tag i{color:var(--gold2);font-style:normal}
+
+.steps{display:flex;gap:6px;margin:20px 0 10px}
+.steps div{flex:1;height:3px;border-radius:2px;background:var(--line);transition:.25s}
+.steps div.on{background:var(--gold)}
+
+h2.sec{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+  margin:22px 0 10px;font-weight:600}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.svc{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px;
+  transition:.15s}
+.svc:active{transform:scale(.99)}
+.svc.sel{border-color:var(--gold);background:linear-gradient(180deg,rgba(201,162,77,.10),rgba(201,162,77,.03))}
+.svc .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:0 0 auto;
+  background:var(--card2);border:1px solid var(--line);font-size:17px}
+.svc.sel .ico{background:rgba(201,162,77,.15);border-color:rgba(201,162,77,.4)}
+.svc .nm{font-size:15px;font-weight:560}
+.svc .mt{font-size:12px;color:var(--dim);margin-top:2px}
+.svc .pr{margin-left:auto;text-align:right;font-weight:650;color:var(--gold2);font-size:15px;white-space:nowrap}
+.svc .pr small{display:block;color:var(--dim);font-weight:400;font-size:11px}
+
+/* date strip */
+.strip{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.dchip{flex:0 0 auto;width:60px;padding:10px 0;text-align:center;border-radius:13px;
+  background:var(--card);border:1px solid var(--line);transition:.15s}
+.dchip .w{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.dchip .d{font-size:19px;font-weight:680;margin:2px 0 0;line-height:1.1}
+.dchip.sel{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#14100a;border-color:transparent}
+.dchip.sel .w{color:rgba(20,16,10,.65)}
+.dchip[disabled]{opacity:.32}
+
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.slot{padding:12px 0;border-radius:12px;background:var(--card);border:1px solid var(--line);
+  font-weight:600;font-size:14.5px;transition:.15s}
+.slot.sel{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#14100a;border-color:transparent}
+.slot[disabled]{opacity:.3;text-decoration:line-through}
+.slot.taken{border-style:dashed}
+.hint{font-size:12.5px;color:var(--dim);margin:10px 0 0}
+
+label.f{display:block;margin:12px 0 0}
+label.f span{display:block;font-size:12.5px;color:var(--dim);margin-bottom:6px}
+.inp{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:12px;
+  padding:13px 14px;font-size:15.5px;outline:none;transition:.15s}
+.inp:focus{border-color:var(--gold);background:#16161b}
+.inp::placeholder{color:#5d5d68}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+
+.btn{display:block;width:100%;padding:15px;border-radius:13px;font-weight:650;font-size:15.5px;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));color:#14100a;transition:.15s;
+  box-shadow:0 8px 22px rgba(201,162,77,.16)}
+.btn:active{transform:scale(.99)}
+.btn[disabled]{opacity:.4;box-shadow:none}
+.btn.ghost{background:var(--card);border:1px solid var(--line);color:var(--txt);box-shadow:none}
+.btn.danger{background:rgba(224,86,86,.12);border:1px solid rgba(224,86,86,.4);color:#ff9b9b;box-shadow:none}
+.btn.sm{padding:10px 12px;font-size:13.5px;border-radius:10px;width:auto;display:inline-block}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.actions .btn{flex:1;min-width:130px}
+
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--dim);font-size:13.5px;margin:16px 0 0}
+
+.opt{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);
+  border-radius:var(--r);background:var(--card);margin-bottom:8px;width:100%;text-align:left}
+.opt.sel{border-color:var(--gold);background:linear-gradient(180deg,rgba(201,162,77,.10),rgba(201,162,77,.03))}
+.opt .ico{font-size:19px}
+.opt .nm{font-weight:600;font-size:15px}
+.opt .mt{font-size:12px;color:var(--dim)}
+.dot{margin-left:auto;width:19px;height:19px;border-radius:50%;border:2px solid var(--line);flex:0 0 auto}
+.opt.sel .dot{border-color:var(--gold);background:radial-gradient(circle,var(--gold) 0 45%,transparent 46%)}
+
+.sum{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:16px}
+.sum .l{display:flex;justify-content:space-between;font-size:14px;color:var(--dim);padding:4px 0}
+.sum .l b{color:var(--txt);font-weight:560}
+.sum .tot{display:flex;justify-content:space-between;font-size:17px;font-weight:700;
+  border-top:1px solid var(--line);margin-top:8px;padding-top:10px}
+.sum .tot span:last-child{color:var(--gold2)}
+
+.qr{width:190px;height:190px;margin:14px auto;background:#fff;border-radius:14px;padding:10px;
+  display:grid;grid-template-columns:repeat(25,1fr);grid-template-rows:repeat(25,1fr);gap:0}
+.qr i{background:#fff}
+.qr i.b{background:#0b0b0d}
+.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--dim);
+  background:var(--bg2);border:1px dashed var(--line);border-radius:10px;padding:10px;word-break:break-all;text-align:left}
+
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;letter-spacing:.04em;
+  text-transform:uppercase;padding:4px 9px;border-radius:999px}
+.badge.pago{color:#8de3bb;background:rgba(63,178,127,.14);border:1px solid rgba(63,178,127,.35)}
+.badge.pendente{color:#f0c477;background:rgba(224,166,58,.13);border:1px solid rgba(224,166,58,.35)}
+.badge.cancelado{color:#ff9b9b;background:rgba(224,86,86,.13);border:1px solid rgba(224,86,86,.32)}
+
+.bk{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.bk .hd{display:flex;align-items:flex-start;gap:10px}
+.bk .tm{font-size:21px;font-weight:750;letter-spacing:-.02em;line-height:1;color:var(--gold2);min-width:64px}
+.bk .nm{font-weight:620}
+.bk .mt{font-size:12.5px;color:var(--dim);margin-top:3px}
+.bk .rt{margin-left:auto;text-align:right}
+.bk .vt{font-weight:680;font-size:14.5px;margin-top:8px}
+.bk .mini{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.bk.done{opacity:.55}
+
+.empty{text-align:center;padding:44px 16px;color:var(--dim);font-size:14px}
+.empty .e{font-size:30px;display:block;margin-bottom:10px;opacity:.6}
+
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.kpi div{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px}
+.kpi .k{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.kpi .v{font-size:17px;font-weight:700;margin-top:3px}
+.kpi .v.g{color:#8de3bb}
+.kpi .v.y{color:#f0c477}
+
+nav.tabbar{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:8px 0 max(8px,env(safe-area-inset-bottom));
+  background:rgba(13,13,16,.94);backdrop-filter:blur(16px);border-top:1px solid var(--line)}
+nav.tabbar .in{max-width:560px;margin:0 auto;display:flex;padding:0 8px}
+nav.tabbar button{flex:1;display:grid;place-items:center;gap:3px;padding:7px 0;border-radius:12px;
+  color:var(--dim);font-size:10.5px;letter-spacing:.03em}
+nav.tabbar button .g{font-size:19px;line-height:1}
+nav.tabbar button.on{color:var(--gold2)}
+
+.toast{position:fixed;left:50%;bottom:104px;transform:translate(-50%,14px);z-index:60;
+  background:#23232b;border:1px solid var(--line);color:var(--txt);font-size:13.5px;
+  padding:11px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+.spin{width:20px;height:20px;border:2.5px solid rgba(20,16,10,.25);border-top-color:#14100a;
+  border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-4px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.done-hero{text-align:center;padding:26px 0 8px}
+.done-hero .ck{width:74px;height:74px;border-radius:50%;margin:0 auto 16px;display:grid;place-items:center;
+  font-size:34px;color:#0b0b0d;background:linear-gradient(180deg,var(--gold2),var(--gold));
+  box-shadow:0 0 0 8px rgba(201,162,77,.10)}
+.done-hero h1{font-size:23px}
+.done-hero p{color:var(--dim);font-size:14px;margin:8px 0 0}
+.proto{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--gold2);
+  border:1px dashed rgba(201,162,77,.4);border-radius:10px;padding:9px 14px;display:inline-block;margin-top:14px}
+
+.wa{background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.35);color:#7ddea4}
+.tinynote{font-size:11.5px;color:#6f6f79;margin-top:10px;text-align:center}
+.subnav{display:flex;gap:6px;margin:14px 0 4px;background:var(--bg2);padding:4px;border-radius:12px;border:1px solid var(--line)}
+.subnav button{flex:1;padding:9px;border-radius:9px;font-size:13px;color:var(--dim);font-weight:560}
+.subnav button.on{background:var(--card2);color:var(--txt)}
+.svcrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.svcrow .inp{padding:10px 12px;font-size:14px}
+.svcrow .nm{flex:2}
+.svcrow .pv{flex:1;max-width:104px}
+.svcrow .del{flex:0 0 auto;color:#ff9b9b;padding:8px;font-size:16px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <img class="mark" src="data:image/jpeg;base64,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" alt="Coast Club & Barber Shop">
+      <div>
+        <b id="shopName">Coast Club &amp; Barber Shop</b>
+        <span id="shopHandle">@coastclub_barbershop</span>
+      </div>
+    </div>
+    <div class="pill">Agenda</div>
+  </div>
+</header>
+
+<main id="view" class="wrap"></main>
+
+<nav class="tabbar">
+  <div class="in">
+    <button data-act="tab" data-tab="agendar" id="tb-agendar"><span class="g">✂️</span>Agendar</button>
+    <button data-act="tab" data-tab="meus" id="tb-meus"><span class="g">🎫</span>Meus</button>
+    <button data-act="tab" data-tab="painel" id="tb-painel"><span class="g">💈</span>Painel</button>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+<script>
+
+/* ============================================================
+   Coast Club & Barber Shop · agendamento
+   Modo LOCAL (padrão, sem configurar nada) ou modo NUVEM (Supabase).
+   A tela é a mesma nos dois; o que muda é onde os dados vivem.
+   ============================================================ */
+const KEY  = 'coastclub.v1';   // dados locais / cache
+const CATALOG_VERSION = 2;      // sobe quando a tabela de preços oficial muda
+const CKEY = 'coastclub.cfg';  // configuração do backend
+
+const DEFAULTS = {
+  shop: 'Coast Club & Barber Shop',
+  handle: '@coastclub_barbershop',
+  ownerName: 'Igor',
+  ownerWhats: '(11) 99560-6334',
+  openHour: 8,
+  closeHour: 17,
+  lunchHour: 12,
+  pin: '1234',
+  services: [
+    { id:'corte-adulto',   name:'Corte Adulto',        price:35, ico:'✂️' },
+    { id:'corte-infantil', name:'Corte Infantil',      price:35, ico:'🧒' },
+    { id:'barba',          name:'Barba',               price:20, ico:'🪒' },
+    { id:'sobrancelha',    name:'Sobrancelha',         price:15, ico:'👁️' },
+    { id:'limpeza',        name:'Limpeza de Pele',     price:30, ico:'🧖' },
+    { id:'luzes',          name:'Luzes',               price:60, ico:'💡' },
+    { id:'nevou',          name:'Platinado / Nevou',   price:75, ico:'🤍' },
+    { id:'pezinho',        name:'Pézinho',             price:15, ico:'🦶' },
+    { id:'risquinho',      name:'Risquinho / Desenho', price:15, ico:'📐' }
+  ],
+  coupons: [ { code:'COAST10', pct:10 } ],
+  bookings: [],
+  seq: 1,
+  catalogVersion: CATALOG_VERSION
+};
+
+const DEFAULTS_CFG = { url:'', key:'', ownerEmail:'', ownerToken:'', ownerExp:0 };
+
+function defaults(){ return JSON.parse(JSON.stringify(DEFAULTS)); }
+
+/* ---------- configuração do backend ---------- */
+let CFG;
+function loadCfg(){
+  try{
+    const raw = localStorage.getItem(CKEY);
+    CFG = raw ? Object.assign({}, DEFAULTS_CFG, JSON.parse(raw)) : Object.assign({}, DEFAULTS_CFG);
+  }catch(e){ CFG = Object.assign({}, DEFAULTS_CFG); }
+  return CFG;
+}
+function saveCfg(){ try{ localStorage.setItem(CKEY, JSON.stringify(CFG)); }catch(e){} }
+function cloud(){ return !!(CFG.url && CFG.key); }
+loadCfg();
+
+/* ---------- estado local ---------- */
+let S;
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){
+      const p = JSON.parse(raw);
+      const d = defaults();
+      S = Object.assign(d, p);
+      if(!Array.isArray(S.services) || !S.services.length) S.services = d.services;
+      if(!Array.isArray(S.bookings)) S.bookings = [];
+      // catálogo antigo (preços de chute) -> tabela oficial da barbearia
+      if((S.catalogVersion || 1) < CATALOG_VERSION){
+        S.services = d.services;
+        S.catalogVersion = CATALOG_VERSION;
+        try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+      }
+    } else S = defaults();
+  }catch(e){ S = defaults(); }
+  return S;
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast('Não consegui salvar neste navegador'); } }
+load();
+
+/* ============================================================
+   CAMADA DE DADOS (API) — decide entre local e Supabase
+   ============================================================ */
+const API = {
+  /* ---- Supabase REST ---- */
+  async rest(path, opts = {}){
+    const url = CFG.url.replace(/\/+$/, '') + '/rest/v1/' + path;
+    const token = opts.token || CFG.key;
+    const headers = Object.assign({
+      'apikey': CFG.key,
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    }, opts.headers || {});
+    const o = Object.assign({}, opts, { headers });
+    delete o.token;
+    const res = await fetch(url, o);
+    const text = await res.text();
+    let body = null;
+    try{ body = text ? JSON.parse(text) : null; }catch(e){ body = text; }
+    if(!res.ok){
+      const msg = body && (body.message || body.hint || body.error_description) || ('HTTP ' + res.status);
+      throw new Error(msg);
+    }
+    return body;
+  },
+  async rpc(fn, args, token){
+    return this.rest('rpc/' + fn, { method:'POST', body: JSON.stringify(args), token });
+  },
+
+  /* ---- token do dono (Supabase Auth) ---- */
+  ownerToken(){
+    if(!CFG.ownerToken) return null;
+    if(CFG.ownerExp && Date.now() > CFG.ownerExp - 60000) return null;
+    return CFG.ownerToken;
+  },
+  async ownerLogin(email, password){
+    const url = CFG.url.replace(/\/+$/, '') + '/auth/v1/token?grant_type=password';
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{ 'apikey': CFG.key, 'Content-Type':'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok){
+      const m = body.error_description || body.msg || body.message || ('HTTP ' + res.status);
+      throw new Error(m);
+    }
+    CFG.ownerToken = body.access_token;
+    CFG.ownerEmail = (body.user && body.user.email) || email;
+    CFG.ownerExp = Date.now() + (Number(body.expires_in || 3600) * 1000);
+    saveCfg();
+    return { ok:true, email: CFG.ownerEmail };
+  },
+  ownerOut(){
+    CFG.ownerToken = ''; CFG.ownerExp = 0; saveCfg();
+  },
+  ownerRest(path, opts = {}){
+    const t = this.ownerToken();
+    if(!t) throw new Error('Sessão expirada, entre de novo.');
+    return this.rest(path, Object.assign({}, opts, { token: t }));
+  },
+
+  /* ---- leitura do catálogo (preços, grade, horários ocupados) ---- */
+  async pullCatalog(){
+    if(!cloud()) return { ok:true, local:true };
+    try{
+      const [set, svc, busy] = await Promise.all([
+        this.rest('settings_public?select=*'),
+        this.rest('services?select=*&active=eq.true&order=sort.asc'),
+        this.rest('busy_slots?select=date,time')
+      ]);
+      const c = set[0] || {};
+      if(c.shop) S.shop = c.shop;
+      if(c.handle != null) S.handle = c.handle;
+      if(c.owner_whats != null) S.ownerWhats = c.owner_whats;
+      if(c.owner_name != null) S.ownerName = c.owner_name;
+      if(c.open_hour != null) S.openHour = c.open_hour;
+      if(c.close_hour != null) S.closeHour = c.close_hour;
+      if(c.lunch_hour != null) S.lunchHour = c.lunch_hour;
+      if(Array.isArray(svc) && svc.length){
+        S.services = svc.map(s => ({ id:s.id, name:s.name, price:Number(s.price), ico:s.ico }));
+      }
+      S.busy = busy.map(b => ({ date:b.date, time:String(b.time).slice(0,5) }));
+      save();
+      return { ok:true };
+    }catch(e){
+      return { ok:false, error:e.message };
+    }
+  },
+
+  /* ---- cotação oficial do preço (servidor manda) ---- */
+  async quote(serviceId, coupon){
+    if(!cloud()){
+      const svc = S.services.find(s => s.id === serviceId) || { price:0 };
+      let pct = 0, code = '';
+      const cp = String(coupon || '').trim().toUpperCase();
+      if(cp){
+        const f = (S.coupons || []).find(c => c.code.toUpperCase() === cp);
+        if(f){ pct = f.pct; code = f.code; }
+      }
+      const off = Math.round(svc.price * pct) / 100;
+      return { ok:true, base:svc.price, coupon:code || null, coupon_pct:pct, off, total: Math.round((svc.price - off)*100)/100 };
+    }
+    try{
+      const r = await this.rpc('quote', { p_service_id: serviceId, p_coupon: coupon || null });
+      return r;
+    }catch(e){ return { ok:false, error:e.message }; }
+  },
+
+  /* ---- criar agendamento ---- */
+  async book(payload){
+    if(!cloud()){
+      // ---- modo local: valida na hora, igual o servidor faria ----
+      if(S.bookings.some(b => b.date === payload.date && b.time === payload.time && b.status !== 'cancelado')){
+        return { ok:false, error:'horario_ocupado' };
+      }
+      const q = await this.quote(payload.serviceId, payload.coupon);
+      const svc = S.services.find(s => s.id === payload.serviceId) || { name:'—', price:0 };
+      const d = fromISO(payload.date);
+      const id = 'CC' + pad(d.getDate()) + pad(d.getMonth()+1) + '-' + String(S.seq).padStart(3,'0');
+      S.seq++;
+      const b = {
+        id, code:id, date:payload.date, time:payload.time,
+        serviceId:svc.id, serviceName:svc.name, base:svc.price,
+        coupon:q.coupon || '', couponPct:q.coupon_pct || 0, total:q.total,
+        client:{ name:payload.name, wa:payload.wa, email:payload.email || '' },
+        pay:{ method:payload.method, last4:payload.last4 || '', status: payload.method === 'pix' ? 'pago' : 'pendente' },
+        status: payload.method === 'pix' ? 'pago' : 'pendente',
+        createdAt: new Date().toISOString(), mine:true
+      };
+      S.bookings.push(b); save();
+      return { ok:true, booking:b, local:true };
+    }
+    try{
+      const r = await this.rpc('book_slot', {
+        p_service_id: payload.serviceId, p_date: payload.date, p_time: payload.time + ':00',
+        p_name: payload.name, p_wa: payload.wa, p_email: payload.email || null,
+        p_coupon: payload.coupon || null, p_method: payload.method, p_last4: payload.last4 || null
+      });
+      if(r && r.ok){
+        toLocalShape(r.booking);
+        await this.pullCatalog();
+      }
+      return r;
+    }catch(e){ return { ok:false, error:e.message }; }
+  },
+
+  /* ---- meus agendamentos ---- */
+  async mine(){
+    if(!cloud()) return S.bookings.filter(b => b.mine);
+    const ids = mineIds();
+    const out = [];
+    for(const id of ids){
+      try{
+        const b = await this.rpc('get_booking', { p_id:id });
+        if(b) out.push(toLocalShape(b));
+      }catch(e){ /* id que não existe mais, ignora */ }
+    }
+    return out;
+  },
+
+  /* ---- cancelar ---- */
+  async cancel(id, wa){
+    if(!cloud()){
+      const b = S.bookings.find(x => x.id === id);
+      if(!b) return { ok:false, error:'nao_encontrado' };
+      b.status = 'cancelado'; save();
+      return { ok:true, booking:b };
+    }
+    try{
+      const r = await this.rpc('cancel_booking', { p_id:id, p_wa: wa });
+      if(r && r.ok) await this.pullCatalog();
+      return r;
+    }catch(e){ return { ok:false, error:e.message }; }
+  },
+
+  /* ---- painel do dono ---- */
+  async day(dateStr){
+    if(!cloud()) return S.bookings.filter(b => b.date === dateStr).sort((a,b)=>a.time.localeCompare(b.time));
+    try{
+      const rows = await this.ownerRest('bookings?select=*&date=eq.' + dateStr + '&order=time.asc');
+      return rows.map(toLocalShape);
+    }catch(e){ toast('Não consegui carregar a agenda: ' + e.message); return []; }
+  },
+  async allBookings(){
+    if(!cloud()) return S.bookings;
+    const rows = await this.ownerRest('bookings?select=*&order=date.desc,time.asc&limit=2000');
+    return rows.map(toLocalShape);
+  },
+  async setStatus(id, status){
+    if(!cloud()){
+      const b = S.bookings.find(x => x.id === id);
+      if(b){ b.status = status; if(b.pay) b.pay.status = status; save(); }
+      return { ok:true };
+    }
+    await this.ownerRest('bookings?id=eq.' + id, { method:'PATCH', body: JSON.stringify({ status }) });
+    return { ok:true };
+  },
+  async saveSettings(patch){
+    if(!cloud()) return { ok:true, local:true };
+    const body = {
+      shop: patch.shop, handle: patch.handle,
+      owner_name: patch.ownerName, owner_whats: patch.ownerWhats,
+      open_hour: patch.openHour, close_hour: patch.closeHour, lunch_hour: patch.lunchHour
+    };
+    Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
+    await this.ownerRest('settings?id=eq.1', { method:'PATCH', body: JSON.stringify(body) });
+    if(patch.pin) await this.ownerRest('settings?id=eq.1', { method:'PATCH', body: JSON.stringify({ pin: patch.pin }) });
+    return { ok:true };
+  },
+  async saveService(s){
+    if(!cloud()) return { ok:true, local:true };
+    await this.ownerRest('services', {
+      method:'POST',
+      headers:{ 'Prefer':'resolution=merge-duplicates' },
+      body: JSON.stringify([{ id:s.id, name:s.name, price:s.price, ico:s.ico, sort:s.sort || 0, active:true }])
+    });
+    return { ok:true };
+  },
+  async removeService(id){
+    if(!cloud()) return { ok:true, local:true };
+    // não apaga de verdade: desativa (agendamentos antigos apontam pra ele)
+    await this.ownerRest('services?id=eq.' + id, { method:'PATCH', body: JSON.stringify({ active:false }) });
+    return { ok:true };
+  }
+};
+
+/* converte a linha do banco para o formato que a tela usa */
+function toLocalShape(b){
+  return {
+    id: b.id,
+    code: b.code || b.id,
+    date: b.date,
+    time: String(b.time || '').slice(0,5),
+    serviceId: b.service_id || b.serviceId,
+    serviceName: b.service_name || b.serviceName,
+    base: Number(b.base), coupon: b.coupon || '', couponPct: b.coupon_pct || 0,
+    total: Number(b.total),
+    client: { name: b.client_name || (b.client && b.client.name) || '', wa: b.client_wa || (b.client && b.client.wa) || '', email: b.client_email || (b.client && b.client.email) || '' },
+    pay: { method: b.pay_method || (b.pay && b.pay.method) || 'pix', last4: b.pay_last4 || (b.pay && b.pay.last4) || '', status: b.status },
+    status: b.status,
+    createdAt: b.created_at || b.createdAt,
+    mine: true
+  };
+}
+
+/* ids dos agendamentos deste aparelho */
+function mineIds(){
+  try{ return JSON.parse(localStorage.getItem('coastclub.mine') || '[]'); }catch(e){ return []; }
+}
+function addMineId(id, wa){
+  const a = mineIds();
+  if(!a.includes(id)){ a.push(id); localStorage.setItem('coastclub.mine', JSON.stringify(a)); }
+  if(wa){
+    const m = myWaMap();
+    m[id] = onlyDigits(wa);
+    try{ localStorage.setItem('coastclub.wa', JSON.stringify(m)); }catch(e){}
+  }
+}
+function myWaMap(){
+  try{ return JSON.parse(localStorage.getItem('coastclub.wa') || '{}'); }catch(e){ return {}; }
+}
+
+
+
+/* ================= UTIL ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const brl = n => 'R$ ' + Number(n||0).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+const pad = n => String(n).padStart(2,'0');
+const iso = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const fromISO = s => { const p = s.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); };
+const WD = ['dom','seg','ter','qua','qui','sex','sáb'];
+const WDF = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const todayISO = () => iso(new Date());
+
+function fmtDate(s){
+  const d = fromISO(s);
+  return WDF[d.getDay()] + ', ' + pad(d.getDate()) + '/' + pad(d.getMonth()+1);
+}
+function fmtShort(s){
+  const d = fromISO(s);
+  return pad(d.getDate()) + '/' + pad(d.getMonth()+1);
+}
+function whenOf(b){
+  const [y,m,d] = String(b.date).split('-').map(Number);
+  const [hh,mm] = String(b.time||'00:00').split(':').map(Number);
+  return new Date(y, (m||1)-1, d||1, hh||0, mm||0).getTime();
+}
+function onlyDigits(s){ return String(s||'').replace(/\D/g,''); }
+function waLink(phone, text){
+  let p = onlyDigits(phone);
+  if(p.length && p.length <= 11) p = '55' + p;
+  return 'https://wa.me/' + p + '?text=' + encodeURIComponent(text||'');
+}
+let toastT;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('on'), 3000);
+}
+
+/* ================= DISPONIBILIDADE ================= */
+function isOpenDay(dateStr){
+  const d = fromISO(dateStr);
+  return d.getDay() !== 0; // fecha domingo
+}
+function allSlots(){
+  const out = [];
+  for(let h = S.openHour; h < S.closeHour; h++){
+    if(h === S.lunchHour) continue; // almoço bloqueado
+    out.push(pad(h) + ':00');
+  }
+  return out;
+}
+function isTaken(dateStr, time){
+  // na nuvem a lista de ocupados vem do servidor (sem dado de cliente)
+  if(cloud() && Array.isArray(S.busy)){
+    if(S.busy.some(b => b.date === dateStr && b.time === time)) return true;
+  }
+  return S.bookings.some(b => b.date === dateStr && b.time === time && b.status !== 'cancelado');
+}
+function isPast(dateStr, time){
+  const t = fromISO(dateStr);
+  const parts = time.split(':').map(Number);
+  t.setHours(parts[0], parts[1], 0, 0);
+  return t.getTime() <= Date.now();
+}
+function freeSlots(dateStr){
+  return allSlots().filter(t => !isTaken(dateStr, t) && !isPast(dateStr, t));
+}
+/* primeiro dia (a partir de hoje) que ainda tem horário livre */
+function firstOpenDay(){
+  const base = new Date();
+  for(let i = 0; i < 60; i++){
+    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+    const ds = iso(d);
+    if(isOpenDay(ds) && freeSlots(ds).length) return ds;
+  }
+  return todayISO();
+}
+
+/* ================= ESTADO DA UI ================= */
+const U = {
+  tab: 'agendar',
+  step: 0,
+  service: null,
+  date: todayISO(),
+  time: null,
+  client: { name:'', wa:'', email:'' },
+  coupon: '',
+  quote: null,
+  method: 'pix',
+  admin: false,
+  adminTab: 'hoje',
+  adminDate: todayISO(),
+  adminDay: [],
+  adminAll: [],
+  loading: false,
+  last: null
+};
+
+/* ================= RENDER ================= */
+function render(){
+  document.querySelectorAll('nav.tabbar button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.tab === U.tab);
+  });
+  const v = $('#view');
+  if(U.tab === 'agendar') v.innerHTML = U.step === 4 ? viewDone() : viewAgendar();
+  else if(U.tab === 'meus') v.innerHTML = viewMeus();
+  else v.innerHTML = (U.admin || (cloud() && API.ownerToken())) ? viewPainel() : viewPin();
+  window.scrollTo(0, 0);
+  const pin = $('#pin'); if(pin) setTimeout(()=>pin.focus(), 60);
+}
+
+function stepsBar(n){
+  return '<div class="steps">' + [0,1,2,3].map(i=>'<div class="'+(i<=n?'on':'')+'"></div>').join('') + '</div>';
+}
+function cloudBadge(){
+  return cloud()
+    ? '<span class="tag" style="border-color:rgba(63,178,127,.4);color:#8de3bb"><i style="color:#8de3bb">●</i> Agenda online</span>'
+    : '<span class="tag"><i>●</i> Modo local</span>';
+}
+
+function viewAgendar(){
+  if(U.step === 0) return viewServices();
+  if(U.step === 1) return viewDateTime();
+  if(U.step === 2) return viewDados();
+  return viewPagamento();
+}
+
+function viewServices(){
+  const list = S.services.map(s => {
+    const sel = U.service === s.id;
+    return `<button class="svc ${sel?'sel':''}" data-act="pick-service" data-id="${esc(s.id)}">
+      <span class="ico">${esc(s.ico||'✂️')}</span>
+      <span>
+        <span class="nm">${esc(s.name)}</span>
+        <span class="mt">1 hora reservada</span>
+      </span>
+      <span class="pr">${brl(s.price)}<small>1h</small></span>
+    </button>`;
+  }).join('');
+
+  return `
+  <section class="hero">
+    <img class="hero-logo" src="data:image/jpeg;base64,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" alt="Coast Club &amp; Barber Shop">
+    <h1>Seu horário, <em>na régua.</em></h1>
+    <p>Escolha o serviço e reserve. Cada horário é seu por 1 hora inteira.</p>
+    <div class="avail">
+      <span class="tag"><i>●</i> Seg a Sáb</span>
+      <span class="tag"><i>●</i> ${pad(S.openHour)}h às ${pad(S.closeHour)}h</span>
+      <span class="tag"><i>●</i> Almoço ${pad(S.lunchHour)}h</span>
+      ${cloudBadge()}
+    </div>
+  </section>
+  ${stepsBar(0)}
+  <h2 class="sec">1 · Qual serviço?</h2>
+  ${list}
+  <div class="actions">
+    <button class="btn" data-act="go-step" data-step="1" ${U.service?'':'disabled'}>Ver horários</button>
+  </div>
+  <p class="tinynote">${S.ownerName ? esc(S.ownerName) + ' · ' : ''}${esc(S.ownerWhats || '')}${S.ownerWhats ? ' · ' : ''}Pagamento simulado nesta versão de teste.</p>`;
+}
+
+function viewDateTime(){
+  const svc = S.services.find(s=>s.id===U.service) || { name:'—', price:0 };
+  const base = new Date();
+  const chips = [];
+  for(let i = 0; i < 28; i++){
+    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+    const ds = iso(d);
+    const open = isOpenDay(ds) && freeSlots(ds).length > 0;
+    chips.push(`<button class="dchip ${ds===U.date?'sel':''}" data-act="pick-date" data-d="${ds}" ${open?'':'disabled'}>
+      <div class="w">${WD[d.getDay()]}</div><div class="d">${pad(d.getDate())}</div>
+    </button>`);
+  }
+  const slots = allSlots().map(t => {
+    const taken = isTaken(U.date, t), past = isPast(U.date, t);
+    const off = taken || past || !isOpenDay(U.date);
+    return `<button class="slot ${U.time===t?'sel':''} ${taken?'taken':''}" data-act="pick-time" data-t="${t}" ${off?'disabled':''}>${t}</button>`;
+  }).join('');
+  const nfree = freeSlots(U.date).length;
+
+  return `
+  ${stepsBar(1)}
+  <h2 class="sec">2 · Dia e horário</h2>
+  <div class="strip">${chips.join('')}</div>
+  <p class="hint">${esc(svc.name)} · ${brl(svc.price)} · 1h reservada</p>
+  <div class="slots">${slots}</div>
+  <p class="hint">${isOpenDay(U.date) ? (nfree ? nfree + ' horário(s) livre(s) em ' + fmtDate(U.date) : (allSlots().every(t => isPast(U.date,t)) ? 'Os horários deste dia já passaram. Escolha outro dia.' : 'Dia lotado, escolha outro.')) : 'Domingo é fechado.'}</p>
+  <div class="actions">
+    <button class="btn ghost sm" data-act="go-step" data-step="0">Voltar</button>
+    <button class="btn" data-act="go-step" data-step="2" ${U.time?'':'disabled'}>Continuar</button>
+  </div>`;
+}
+
+function viewDados(){
+  const svc = S.services.find(s=>s.id===U.service) || { name:'—', price:0 };
+  return `
+  ${stepsBar(2)}
+  <h2 class="sec">3 · Seus dados</h2>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;font-size:14px">
+      <span style="color:var(--dim)">${esc(svc.name)}</span><b>${brl(svc.price)}</b>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:14px;margin-top:6px">
+      <span style="color:var(--dim)">${fmtDate(U.date)}</span><b>${U.time}</b>
+    </div>
+  </div>
+  <label class="f"><span>Nome completo</span>
+    <input class="inp" id="i-name" placeholder="Como você quer ser chamado" value="${esc(U.client.name)}" autocomplete="name">
+  </label>
+  <label class="f"><span>WhatsApp (com DDD)</span>
+    <input class="inp" id="i-wa" inputmode="numeric" placeholder="(11) 90000-0000" value="${esc(U.client.wa)}" autocomplete="tel">
+  </label>
+  <label class="f"><span>E-mail</span>
+    <input class="inp" id="i-email" inputmode="email" placeholder="voce@email.com" value="${esc(U.client.email)}" autocomplete="email">
+  </label>
+  <label class="f"><span>Cupom de desconto (opcional)</span>
+    <input class="inp" id="i-coupon" placeholder="Ex: COAST10" value="${esc(U.coupon)}" autocapitalize="characters">
+  </label>
+  <div class="actions">
+    <button class="btn ghost sm" data-act="go-step" data-step="1">Voltar</button>
+    <button class="btn" data-act="to-pay">Ir para pagamento</button>
+  </div>
+  <p class="tinynote">Seu WhatsApp fica salvo para o barbeiro te avisar sobre o corte.</p>`;
+}
+
+function viewPagamento(){
+  const q = U.quote || { base:0, off:0, total:0, coupon:null, coupon_pct:0 };
+  const svc = S.services.find(s=>s.id===U.service) || { name:'—' };
+
+  const sum = `
+    <div class="sum">
+      <div class="l"><span>${esc(svc.name)}</span><b>${brl(q.base)}</b></div>
+      ${q.off > 0 ? `<div class="l"><span>Cupom ${esc(q.coupon)} (−${q.coupon_pct}%)</span><b>− ${brl(q.off)}</b></div>` : ''}
+      <div class="l"><span>${fmtDate(U.date)} às ${U.time}</span><b>1h</b></div>
+      <div class="tot"><span>Total</span><span>${brl(q.total)}</span></div>
+    </div>`;
+
+  const opt = (m, ico, nm, mt) => `<div class="opt ${U.method===m?'sel':''}" data-act="method" data-m="${m}">
+      <span class="ico">${ico}</span><span><span class="nm">${nm}</span><span class="mt">${mt}</span></span><span class="dot"></span></div>`;
+
+  let body;
+  if(U.method === 'pix'){
+    body = `
+      <div class="qr">${qrCells('PIX-SIMULADO-COASTCLUB-'+U.date+'-'+U.time+'-'+q.total)}</div>
+      <div style="text-align:center;margin-bottom:10px"><span class="badge pendente">Simulado</span></div>
+      <div class="code">00020126580014BR.GOV.BCB.PIX0136SIMULADO-COAST-CLUB-${esc(U.date.replace(/-/g,''))}5204000053039865802BR5920COAST CLUB BARBERSHOP6009SAO PAULO62070503***6304A1B2</div>
+      <div class="actions"><button class="btn ghost sm" data-act="copy-pix">Copiar código</button></div>
+      <button class="btn" style="margin-top:12px" data-act="pay">Já paguei · confirmar ${brl(q.total)}</button>`;
+  } else {
+    body = `
+      <label class="f"><span>Número do cartão</span>
+        <input class="inp" id="c-num" inputmode="numeric" placeholder="0000 0000 0000 0000" maxlength="19">
+      </label>
+      <label class="f"><span>Nome impresso no cartão</span>
+        <input class="inp" id="c-name" placeholder="NOME SOBRENOME" style="text-transform:uppercase">
+      </label>
+      <div class="row">
+        <label class="f"><span>Validade</span><input class="inp" id="c-exp" inputmode="numeric" placeholder="MM/AA" maxlength="5"></label>
+        <label class="f"><span>CVV</span><input class="inp" id="c-cvv" inputmode="numeric" placeholder="123" maxlength="4"></label>
+      </div>
+      <button class="btn" style="margin-top:16px" data-act="pay" data-with-card="1">Pagar ${brl(q.total)}</button>
+      <p class="tinynote">Ambiente de teste: nenhum dado de cartão sai daqui, só os 4 últimos dígitos ficam salvos.</p>`;
+  }
+
+  return `
+  ${stepsBar(3)}
+  <h2 class="sec">4 · Pagamento</h2>
+  ${opt('pix','🔳','Pix','Confirma na hora')}
+  ${opt('card','💳','Cartão de crédito','Simulado nesta versão')}
+  ${body}
+  ${sum}
+  <div class="actions"><button class="btn ghost sm" data-act="go-step" data-step="2">Voltar</button></div>
+  <p class="tinynote">Pagamento simulado: o agendamento é confirmado no teste, sem cobrança real.</p>`;
+}
+
+function qrCells(seed){
+  let h = 2166136261;
+  for(let i = 0; i < seed.length; i++){ h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const N = 25, cells = [];
+  const finder = (r,c) => {
+    const inBox = (r0,c0) => r >= r0 && r < r0+7 && c >= c0 && c < c0+7;
+    if(inBox(0,0) || inBox(0,N-7) || inBox(N-7,0)){
+      const rr = r < 7 ? r : r - (N-7), cc = c < 7 ? c : c - (N-7);
+      const edge = rr === 0 || rr === 6 || cc === 0 || cc === 6;
+      const core = rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4;
+      return edge || core;
+    }
+    return null;
+  };
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      const f = finder(r,c);
+      let on;
+      if(f !== null) on = f;
+      else { h = Math.imul(h ^ (r*31+c), 2246822519); on = ((h >>> 13) & 1) === 1; }
+      cells.push('<i class="' + (on ? 'b' : '') + '"></i>');
+    }
+  }
+  return cells.join('');
+}
+
+function viewDone(){
+  const b = U.last;
+  if(!b) return '<div class="empty">Nada por aqui.</div>';
+  return `
+  <div class="done-hero">
+    <div class="ck">✓</div>
+    <h1>Agendamento confirmado</h1>
+    <p>${esc(b.serviceName)} · ${fmtDate(b.date)} às ${b.time}</p>
+    <div class="proto">${esc(b.code || b.id)}</div>
+  </div>
+  <div class="sum" style="margin-top:22px">
+    <div class="l"><span>Cliente</span><b>${esc(b.client.name)}</b></div>
+    <div class="l"><span>WhatsApp</span><b>${esc(b.client.wa)}</b></div>
+    <div class="l"><span>Pagamento</span><b>${b.pay.method === 'pix' ? 'Pix' : 'Cartão'} ${b.pay.last4 ? '••'+esc(b.pay.last4) : ''}</b></div>
+    <div class="l"><span>Status</span><b style="color:${b.status==='pago'?'#8de3bb':'#f0c477'}">${b.status === 'pago' ? 'Pago' : 'A confirmar'}</b></div>
+    <div class="tot"><span>Total</span><span>${brl(b.total)}</span></div>
+  </div>
+  <div class="actions">
+    <button class="btn" data-act="new">Agendar outro</button>
+    <button class="btn ghost" data-act="tab" data-tab="meus">Ver meus horários</button>
+  </div>
+  <p class="tinynote">Chegando 10 min antes, o corte anda na hora. Cancelamento: só avisar no WhatsApp.</p>`;
+}
+
+function viewMeus(){
+  const mine = U.myList || [];
+  const now = Date.now();
+  const up = mine.filter(b => b.status !== 'cancelado' && whenOf(b) >= now);
+  const past = mine.filter(b => !up.includes(b));
+
+  const card = b => `
+    <div class="bk ${b.status==='cancelado'?'done':''}">
+      <div class="hd">
+        <div class="tm">${b.time}</div>
+        <div>
+          <div class="nm">${esc(b.serviceName)}</div>
+          <div class="mt">${fmtDate(b.date)} · ${brl(b.total)}</div>
+        </div>
+        <div class="rt"><span class="badge ${b.status}">${b.status === 'pago' ? 'Pago' : b.status === 'cancelado' ? 'Cancelado' : 'Pendente'}</span></div>
+      </div>
+      ${b.status === 'cancelado' ? '' : `<div class="mini">
+        <button class="btn ghost sm" data-act="meus-cancel" data-id="${esc(b.id)}">Cancelar</button>
+      </div>`}
+    </div>`;
+
+  if(U.loading && !mine.length){
+    return `<div class="empty" style="padding-top:50px"><span class="spin" style="border-color:rgba(201,162,77,.3);border-top-color:var(--gold)"></span> Carregando seus horários…</div>`;
+  }
+  if(!mine.length){
+    return `<div class="empty"><span class="e">🎫</span>Você ainda não tem horário marcado.<br><br>
+      <button class="btn" style="display:inline-block;width:auto;padding:12px 22px" data-act="tab" data-tab="agendar">Marcar agora</button></div>`;
+  }
+  return `
+  <h2 class="sec" style="margin-top:26px">Próximos</h2>
+  ${up.length ? up.map(card).join('') : '<div class="empty" style="padding:26px">Nenhum horário futuro.</div>'}
+  ${past.length ? '<h2 class="sec">Histórico</h2>' + past.map(card).join('') : ''}
+  <p class="tinynote">${cloud() ? 'Sincronizado com a agenda da barbearia.' : 'Esta lista fica só neste aparelho (modo local).'}</p>`;
+}
+
+/* ---------- painel do dono ---------- */
+function viewPin(){
+  if(cloud()){
+    return `
+    <div class="hero" style="padding-top:30px">
+      <h1>Painel do <em>barbeiro</em></h1>
+      <p>Entre com o e-mail e a senha do dono.</p>
+    </div>
+    <label class="f"><span>E-mail</span>
+      <input class="inp" id="ownerEmail" inputmode="email" autocomplete="username" placeholder="voce@email.com" value="${esc(CFG.ownerEmail||'')}">
+    </label>
+    <label class="f"><span>Senha</span>
+      <input class="inp" id="ownerPass" type="password" autocomplete="current-password" placeholder="••••••••">
+    </label>
+    ${U.ownerAuthError ? `<p class="hint" style="color:#ff9b9b">${esc(U.ownerAuthError)}</p>` : ''}
+    <div class="actions"><button class="btn" data-act="login-cloud">Entrar</button></div>
+    <p class="tinynote">O acesso é do usuário criado no Supabase e cadastrado como dono na tabela owners.</p>`;
+  }
+  return `
+  <div class="hero" style="padding-top:30px">
+    <h1>Painel do <em>barbeiro</em></h1>
+    <p>Área do dono. Digite o PIN para ver a agenda do dia.</p>
+  </div>
+  <label class="f"><span>PIN de acesso</span>
+    <input class="inp" id="pin" inputmode="numeric" maxlength="6" placeholder="••••" style="letter-spacing:.4em;text-align:center;font-size:22px">
+  </label>
+  <div class="actions"><button class="btn" data-act="login">Entrar</button></div>
+  <p class="tinynote">PIN padrão: 1234. Dá pra trocar em Ajustes.</p>`;
+}
+
+function viewPainel(){
+  const sub = `
+  <div class="subnav">
+    <button data-act="adm-tab" data-t="hoje" class="${U.adminTab==='hoje'?'on':''}">Agenda</button>
+    <button data-act="adm-tab" data-t="clientes" class="${U.adminTab==='clientes'?'on':''}">Clientes</button>
+    <button data-act="adm-tab" data-t="ajustes" class="${U.adminTab==='ajustes'?'on':''}">Ajustes</button>
+  </div>`;
+  if(U.adminTab === 'clientes') return sub + viewClientes();
+  if(U.adminTab === 'ajustes') return sub + viewAjustes();
+  return sub + viewAgendaDia();
+}
+
+function viewAgendaDia(){
+  const d = U.adminDate;
+  const list = (U.adminDay || []).slice().sort((a,b) => a.time.localeCompare(b.time));
+  const act = list.filter(b => b.status !== 'cancelado');
+  const pago = act.filter(b => b.status === 'pago').reduce((s,b) => s + b.total, 0);
+  const pend = act.filter(b => b.status === 'pendente').reduce((s,b) => s + b.total, 0);
+
+  const nav = `
+    <div style="display:flex;align-items:center;gap:8px;margin:16px 0 12px">
+      <button class="btn ghost sm" data-act="adm-day" data-delta="-1">‹</button>
+      <div style="flex:1;text-align:center">
+        <div style="font-weight:640">${fmtDate(d)}</div>
+        <div style="font-size:12px;color:var(--dim)">${isOpenDay(d)?'Aberto':'Fechado (domingo)'}${cloud()?' · online':''}</div>
+      </div>
+      <button class="btn ghost sm" data-act="adm-day" data-delta="1">›</button>
+    </div>`;
+
+  const kpi = `
+    <div class="kpi">
+      <div><div class="k">Cortes</div><div class="v">${act.length}</div></div>
+      <div><div class="k">Recebido</div><div class="v g">${brl(pago)}</div></div>
+      <div><div class="k">A receber</div><div class="v y">${brl(pend)}</div></div>
+    </div>`;
+
+  const cards = list.length ? list.map(b => {
+    const msg = 'Olá ' + (b.client.name.split(' ')[0]||'') + '! Aqui é da ' + S.shop + '. Confirmando seu ' + b.serviceName + ' ' + fmtDate(b.date) + ' às ' + b.time + '. Valor ' + brl(b.total) + '. Qualquer coisa me chama por aqui.';
+    return `
+    <div class="bk ${b.status==='cancelado'?'done':''}">
+      <div class="hd">
+        <div class="tm">${b.time}</div>
+        <div style="min-width:0">
+          <div class="nm">${esc(b.client.name)}</div>
+          <div class="mt">${esc(b.serviceName)} · ${brl(b.total)}${b.coupon? ' · cupom '+esc(b.coupon):''}</div>
+          <div class="mt">${esc(b.client.wa)}${b.client.email ? ' · ' + esc(b.client.email) : ''}</div>
+        </div>
+        <div class="rt">
+          <span class="badge ${b.status}">${b.status === 'pago' ? 'Pago' : b.status === 'cancelado' ? 'Cancelado' : 'Pendente'}</span>
+          <div class="mt" style="margin-top:5px">${b.pay.method === 'pix' ? 'Pix' : 'Cartão'}${b.pay.last4 ? ' ••'+esc(b.pay.last4) : ''}</div>
+        </div>
+      </div>
+      <div class="mini">
+        ${b.status === 'pendente' ? `<button class="btn sm" data-act="adm-pay" data-id="${esc(b.id)}">Receber ${brl(b.total)}</button>` : ''}
+        ${b.status !== 'cancelado' ? `<a class="btn wa sm" style="text-decoration:none;text-align:center" target="_blank" href="${waLink(b.client.wa, msg)}">WhatsApp</a>` : ''}
+        ${b.status !== 'cancelado' ? `<button class="btn danger sm" data-act="adm-cancel" data-id="${esc(b.id)}">Cancelar</button>` : ''}
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty"><span class="e">💈</span>Nenhum agendamento neste dia.</div>';
+
+  const takenToday = new Set(list.filter(b => b.status !== 'cancelado').map(b => b.time));
+  const free = isOpenDay(d) ? allSlots().filter(t => !takenToday.has(t) && !isTaken(d,t)) : [];
+
+  return `
+  ${nav}${kpi}
+  <h2 class="sec">Horários</h2>
+  ${cards}
+  ${isOpenDay(d) ? `<p class="hint">Livres: ${free.length ? free.join(' · ') : 'nenhum'}</p>` : ''}
+  <div class="actions"><button class="btn ghost sm" data-act="adm-logout">Sair do painel</button></div>`;
+}
+
+function viewClientes(){
+  const list = (U.adminAll && U.adminAll.length) ? U.adminAll : S.bookings;
+  const map = new Map();
+  list.filter(b => b.status !== 'cancelado').forEach(b => {
+    const k = onlyDigits(b.client.wa) || b.client.name;
+    if(!map.has(k)) map.set(k, { name:b.client.name, wa:b.client.wa, email:b.client.email, n:0, total:0, last:'' });
+    const c = map.get(k);
+    c.n++; c.total += b.total;
+    if(b.date > c.last) c.last = b.date;
+  });
+  const arr = [...map.values()].sort((a,b) => b.last.localeCompare(a.last));
+  if(!arr.length) return '<div class="empty" style="padding-top:40px"><span class="e">👥</span>Nenhum cliente ainda. Eles aparecem aqui quando marcarem horário.</div>';
+
+  return `
+  <h2 class="sec">Clientes (${arr.length})</h2>
+  ${arr.map(c => {
+    const msg = 'Olá ' + (c.name.split(' ')[0]||'') + '! Aqui é da ' + S.shop + '. Tudo bem? Bora marcar seu próximo corte?';
+    return `<div class="bk">
+      <div class="hd">
+        <div style="min-width:0">
+          <div class="nm">${esc(c.name)}</div>
+          <div class="mt">${esc(c.wa)}${c.email ? ' · ' + esc(c.email) : ''}</div>
+        </div>
+        <div class="rt"><div style="font-weight:680;font-size:14px">${c.n} visita${c.n>1?'s':''}</div><div class="mt">${brl(c.total)}</div></div>
+      </div>
+      <div class="mini">
+        <a class="btn wa sm" style="text-decoration:none;text-align:center" target="_blank" href="${waLink(c.wa, msg)}">Mandar mensagem</a>
+      </div>
+    </div>`;
+  }).join('')}`;
+}
+
+function viewAjustes(){
+  const svcRows = S.services.map((s,i) => `
+    <div class="svcrow" data-sid="${esc(s.id)}">
+      <input class="inp nm" value="${esc(s.name)}" data-f="name" aria-label="Serviço">
+      <input class="inp pv" value="${Number(s.price).toFixed(2).replace('.',',')}" data-f="price" inputmode="decimal" aria-label="Preço">
+      <button class="del" data-act="svc-del" data-id="${esc(s.id)}">🗑</button>
+    </div>`).join('');
+
+  return `
+  <h2 class="sec">Serviços e preços</h2>
+  <div class="card">${svcRows}
+    <button class="btn ghost sm" data-act="svc-add" style="margin-top:6px">+ Adicionar serviço</button>
+  </div>
+
+  <h2 class="sec">Funcionamento</h2>
+  <div class="card">
+    <div class="row">
+      <label class="f"><span>Abre</span><input class="inp" id="s-open" inputmode="numeric" value="${S.openHour}"></label>
+      <label class="f"><span>Fecha</span><input class="inp" id="s-close" inputmode="numeric" value="${S.closeHour}"></label>
+      <label class="f"><span>Almoço</span><input class="inp" id="s-lunch" inputmode="numeric" value="${S.lunchHour}"></label>
+    </div>
+    <label class="f"><span>Nome da barbearia</span><input class="inp" id="s-shop" value="${esc(S.shop)}"></label>
+    <label class="f"><span>Instagram</span><input class="inp" id="s-handle" value="${esc(S.handle)}"></label>
+    <label class="f"><span>Nome do dono</span><input class="inp" id="s-owner" value="${esc(S.ownerName||'')}" placeholder="Igor"></label>
+    <label class="f"><span>WhatsApp do dono</span><input class="inp" id="s-wa" inputmode="numeric" value="${esc(S.ownerWhats)}" placeholder="(11) 90000-0000"></label>
+    ${cloud() ? '' : `<label class="f"><span>PIN do painel</span><input class="inp" id="s-pin" inputmode="numeric" maxlength="6" value="${esc(S.pin)}"></label>`}
+    <button class="btn" style="margin-top:14px" data-act="save-settings">Salvar ajustes</button>
+  </div>
+
+  <h2 class="sec">Agenda online ${cloud()?'· conectada':'· desligada'}</h2>
+  <div class="card">
+    ${cloud() ? `
+      <p style="font-size:13px;color:var(--dim);margin:0 0 10px">
+        Conectada. Todos os celulares veem a mesma agenda.
+      </p>
+      <p style="font-size:12px;color:#6f6f79;margin:0 0 12px;word-break:break-all">${esc(CFG.url)}</p>
+      <button class="btn ghost sm" data-act="cloud-test">Testar conexão</button>
+      <button class="btn danger sm" style="margin-top:8px" data-act="cloud-off">Desconectar</button>
+    ` : `
+      <p style="font-size:13px;color:var(--dim);margin:0 0 12px">
+        Sem backend, cada celular guarda a própria agenda e o dono não vê o que o cliente marcou.
+        Cole abaixo a URL e a chave pública (anon) do seu projeto Supabase para ligar a agenda compartilhada.
+      </p>
+      <label class="f"><span>URL do projeto</span><input class="inp" id="c-url" placeholder="https://xxxx.supabase.co" value="${esc(CFG.url)}"></label>
+      <label class="f"><span>Chave pública (anon key)</span><input class="inp" id="c-key" placeholder="eyJhbGciOi..." value="${esc(CFG.key)}"></label>
+      <label class="f"><span>E-mail do dono (para o painel)</span><input class="inp" id="c-owner" inputmode="email" placeholder="voce@email.com" value="${esc(CFG.ownerEmail)}"></label>
+      <button class="btn" style="margin-top:14px" data-act="cloud-on">Ligar agenda online</button>
+      <p class="tinynote" style="text-align:left">A chave anon é pública por design, quem protege os dados é a política de acesso do banco.</p>
+    `}
+  </div>
+
+  <h2 class="sec">Backup dos dados</h2>
+  <div class="card">
+    <div class="actions" style="margin-top:0">
+      <button class="btn ghost sm" data-act="export">Baixar backup</button>
+      <button class="btn ghost sm" data-act="import">Restaurar backup</button>
+    </div>
+  </div>
+  <div class="actions"><button class="btn ghost sm" data-act="adm-logout">Sair do painel</button></div>`;
+}
+
+/* ================= AÇÕES ================= */
+async function toPay(){
+  U.client.name = ($('#i-name')?.value || '').trim();
+  U.client.wa = ($('#i-wa')?.value || '').trim();
+  U.client.email = ($('#i-email')?.value || '').trim();
+  U.coupon = ($('#i-coupon')?.value || '').trim().toUpperCase();
+
+  if(U.client.name.length < 3){ toast('Escreve o nome completo'); return; }
+  const dg = onlyDigits(U.client.wa);
+  if(dg.length < 10 || dg.length > 11){ toast('WhatsApp com DDD (10 ou 11 dígitos)'); return; }
+  if(U.client.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(U.client.email)){ toast('E-mail inválido'); return; }
+
+  U.quote = await API.quote(U.service, U.coupon);
+  if(U.quote.coupon && U.coupon) toast('Cupom aplicado: −' + U.quote.coupon_pct + '%');
+  else if(U.coupon) toast('Cupom inválido, segue sem desconto');
+  U.step = 3; render();
+}
+
+async function finishPayment(withCard){
+  let last4 = '';
+  if(withCard){
+    const num = onlyDigits($('#c-num')?.value || '');
+    const nm = ($('#c-name')?.value || '').trim();
+    const exp = ($('#c-exp')?.value || '').trim();
+    const cvv = onlyDigits($('#c-cvv')?.value || '');
+    if(num.length < 13){ toast('Número do cartão incompleto'); return; }
+    if(nm.length < 3){ toast('Nome no cartão incompleto'); return; }
+    if(!/^\d{2}\/\d{2}$/.test(exp)){ toast('Validade no formato MM/AA'); return; }
+    if(cvv.length < 3){ toast('CVV inválido'); return; }
+    last4 = num.slice(-4);
+  }
+  if(isTaken(U.date, U.time) || isPast(U.date, U.time)){
+    toast('Esse horário acabou de ser pego. Escolha outro.');
+    U.step = 1; U.time = null; U.quote = null; render(); return;
+  }
+
+  const btn = document.querySelector('[data-act="pay"]');
+  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Confirmando…'; }
+
+  const r = await API.book({
+    serviceId: U.service, date: U.date, time: U.time,
+    name: U.client.name, wa: U.client.wa, email: U.client.email,
+    coupon: U.coupon, method: U.method, last4
+  });
+
+  if(!r.ok){
+    const msg = ({
+      horario_ocupado:'Esse horário acabou de ser pego. Escolha outro.',
+      horario_de_almoco:'Esse horário é do almoço.',
+      fora_do_horario:'Fora do horário de funcionamento.',
+      domingo_fechado:'Domingo é fechado.',
+      horario_passado:'Esse horário já passou.'
+    })[r.error] || ('Não consegui agendar: ' + r.error);
+    toast(msg);
+    if(r.error === 'horario_ocupado'){ U.step = 1; U.time = null; await API.pullCatalog(); }
+    render(); return;
+  }
+
+  const b = cloud() ? toLocalShape(r.booking) : r.booking;
+  addMineId(b.id, U.client.wa);
+  if(!cloud()) b.mine = true;
+
+  U.last = b;
+  U.step = 4;
+  U.service = null; U.time = null; U.coupon = ''; U.quote = null;
+  U.client = { name:'', wa:'', email:'' };
+  render();
+  setTimeout(() => toast('Pagamento aprovado (simulado)'), 120);
+}
+
+async function loadMine(){
+  U.loading = true; render();
+  U.myList = await API.mine();
+  U.loading = false; render();
+}
+
+async function loadAdminDay(){
+  U.adminDay = await API.day(U.adminDate);
+  if(cloud()) await API.pullCatalog();
+  render();
+}
+async function loadAdminAll(){
+  try{ U.adminAll = await API.allBookings(); }catch(e){ U.adminAll = S.bookings; }
+  render();
+}
+
+/* ================= EVENTOS ================= */
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act]');
+  if(!el) return;
+  const act = el.dataset.act;
+
+  if(act === 'tab'){
+    U.tab = el.dataset.tab;
+    if(U.tab === 'agendar' && U.step === 4) U.step = 0;
+    render();
+    if(U.tab === 'meus') await loadMine();
+    return;
+  }
+
+  if(act === 'pick-service'){ U.service = el.dataset.id; U.time = null; render(); return; }
+  if(act === 'pick-date'){ U.date = el.dataset.d; U.time = null; render(); return; }
+  if(act === 'pick-time'){ U.time = el.dataset.t; render(); return; }
+  if(act === 'go-step'){
+    const n = Number(el.dataset.step);
+    if(n === 1 && !U.service){ toast('Escolha um serviço'); return; }
+    if(n === 2 && !U.time){ toast('Escolha um horário'); return; }
+    if(n === 1 && !freeSlots(U.date).length){ U.date = firstOpenDay(); U.time = null; }
+    U.step = n; render(); return;
+  }
+  if(act === 'to-pay'){ await toPay(); return; }
+  if(act === 'method'){ U.method = el.dataset.m; render(); return; }
+  if(act === 'pay'){ await finishPayment(el.dataset.withCard === '1'); return; }
+  if(act === 'new'){ U.step = 0; U.tab = 'agendar'; render(); return; }
+  if(act === 'meus-cancel'){
+    const id = el.dataset.id;
+    if(!confirm('Cancelar este horário?')) return;
+    let wa = myWaMap()[id] || '';
+    if(!wa){
+      wa = prompt('Confirme o WhatsApp usado no agendamento:');
+      if(wa == null) return;
+    }
+    const r = await API.cancel(id, wa);
+    if(r.ok){ toast('Horário cancelado'); await loadMine(); }
+    else toast(r.error === 'whatsapp_nao_confere' ? 'WhatsApp não confere' : 'Não consegui cancelar');
+    return;
+  }
+  if(act === 'copy-pix'){
+    const txt = document.querySelector('.code')?.textContent || '';
+    navigator.clipboard?.writeText(txt).then(()=>toast('Código copiado'), ()=>toast('Selecione e copie o código'));
+    return;
+  }
+
+  /* painel */
+  if(act === 'login'){
+    const v = ($('#pin')?.value || '').trim();
+    if(v === String(S.pin)){ U.admin = true; render(); await loadAdminDay(); }
+    else toast('PIN incorreto');
+    return;
+  }
+  if(act === 'login-cloud'){
+    const email = ($('#ownerEmail')?.value || '').trim();
+    const pass  = ($('#ownerPass')?.value || '');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('E-mail inválido'); return; }
+    if(pass.length < 4){ toast('Digite a senha'); return; }
+    CFG.ownerEmail = email; saveCfg();   // não perde o e-mail se errar a senha
+    const btn = el; btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Entrando…';
+    try{
+      await API.ownerLogin(email, pass);
+      U.admin = true; U.ownerAuthError = '';
+      render(); await loadAdminDay();
+    }catch(err){
+      U.ownerAuthError = /invalid|credentials|grant/i.test(err.message)
+        ? 'E-mail ou senha incorretos.'
+        : err.message;
+      render();
+    }
+    return;
+  }
+  if(act === 'adm-logout'){ U.admin = false; if(cloud()) API.ownerOut(); render(); return; }
+  if(act === 'adm-tab'){
+    U.adminTab = el.dataset.t; render();
+    if(U.adminTab === 'clientes') await loadAdminAll();
+    return;
+  }
+  if(act === 'adm-day'){
+    const d = fromISO(U.adminDate);
+    d.setDate(d.getDate() + Number(el.dataset.delta));
+    U.adminDate = iso(d);
+    await loadAdminDay(); return;
+  }
+  if(act === 'adm-pay'){
+    await API.setStatus(el.dataset.id, 'pago');
+    toast('Pagamento confirmado');
+    if(cloud()) await API.pullCatalog();
+    await loadAdminDay(); return;
+  }
+  if(act === 'adm-cancel'){
+    if(!confirm('Cancelar este horário? Ele volta a ficar livre.')) return;
+    await API.setStatus(el.dataset.id, 'cancelado');
+    toast('Cancelado, horário liberado');
+    if(cloud()) await API.pullCatalog();
+    await loadAdminDay(); return;
+  }
+
+  /* ajustes */
+  if(act === 'svc-add'){
+    const id = 'svc-' + Date.now().toString(36);
+    S.services.push({ id, name:'Novo serviço', price:0, ico:'✂️' });
+    save(); render(); return;
+  }
+  if(act === 'svc-del'){
+    if(S.services.length <= 1){ toast('Precisa ter pelo menos um serviço'); return; }
+    const id = el.dataset.id;
+    S.services = S.services.filter(s => s.id !== id);
+    save();
+    if(cloud()) await API.removeService(id);
+    render(); return;
+  }
+  if(act === 'save-settings'){
+    const updates = [];
+    document.querySelectorAll('.svcrow').forEach(row => {
+      const id = row.dataset.sid;
+      const s = S.services.find(x => x.id === id);
+      if(!s) return;
+      const nm = row.querySelector('[data-f="name"]').value.trim();
+      const pv = parseFloat(row.querySelector('[data-f="price"]').value.replace(',', '.'));
+      if(nm) s.name = nm;
+      s.price = isNaN(pv) ? s.price : Math.max(0, pv);
+      updates.push(s);
+    });
+    const op = Number($('#s-open').value), cl = Number($('#s-close').value), lu = Number($('#s-lunch').value);
+    if(op >= 0 && op < 24) S.openHour = op;
+    if(cl > S.openHour && cl <= 24) S.closeHour = cl;
+    if(lu >= S.openHour && lu < S.closeHour) S.lunchHour = lu;
+    S.shop = $('#s-shop').value.trim() || S.shop;
+    S.handle = $('#s-handle').value.trim();
+    S.ownerWhats = $('#s-wa').value.trim();
+    const own = $('#s-owner');
+    if(own && own.value.trim()) S.ownerName = own.value.trim();
+    const pinEl = $('#s-pin');
+    if(pinEl){ const pin = (pinEl.value || '').trim(); if(/^\d{4,6}$/.test(pin)) S.pin = pin; }
+    save(); paintBrand();
+
+    if(cloud()){
+      try{
+        for(const s of updates) await API.saveService(s);
+        await API.saveSettings({ shop:S.shop, handle:S.handle, ownerName:S.ownerName, ownerWhats:S.ownerWhats, openHour:S.openHour, closeHour:S.closeHour, lunchHour:S.lunchHour });
+        await API.pullCatalog();
+        toast('Ajustes salvos na nuvem');
+      }catch(err){ toast('Salvei aqui, mas a nuvem recusou: ' + err.message); }
+    } else toast('Ajustes salvos');
+
+    render(); return;
+  }
+
+  /* nuvem */
+  if(act === 'cloud-on'){
+    const url = ($('#c-url')?.value || '').trim();
+    const key = ($('#c-key')?.value || '').trim();
+    const owner = ($('#c-owner')?.value || '').trim();
+    if(!/^https?:\/\//.test(url)){ toast('URL inválida'); return; }
+    if(key.length < 20){ toast('Chave anon inválida'); return; }
+    CFG.url = url.replace(/\/+$/,''); CFG.key = key; CFG.ownerEmail = owner; saveCfg();
+    const r = await API.pullCatalog();
+    if(r.ok){ toast('Agenda online ligada'); paintBrand(); render(); }
+    else { toast('Não conectou: ' + r.error); CFG.url=''; CFG.key=''; saveCfg(); render(); }
+    return;
+  }
+  if(act === 'cloud-test'){
+    const r = await API.pullCatalog();
+    toast(r.ok ? 'Conexão ok · ' + S.services.length + ' serviços' : 'Falhou: ' + r.error);
+    return;
+  }
+  if(act === 'cloud-off'){
+    if(!confirm('Desligar a agenda online neste aparelho? Os dados já baixados continuam aqui.')) return;
+    CFG.url = ''; CFG.key = ''; saveCfg(); render(); toast('Agenda online desligada');
+    return;
+  }
+
+  if(act === 'export'){
+    const blob = new Blob([JSON.stringify(S, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'coast-club-backup-' + todayISO() + '.json';
+    a.click(); URL.revokeObjectURL(a.href); return;
+  }
+  if(act === 'import'){
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.json,application/json';
+    inp.onchange = () => {
+      const f = inp.files[0]; if(!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        try{
+          const p = JSON.parse(rd.result);
+          if(!p || typeof p !== 'object') throw 0;
+          S = Object.assign(defaults(), p);
+          if(!Array.isArray(S.bookings)) S.bookings = [];
+          save(); paintBrand(); toast('Backup restaurado'); render();
+        }catch(err){ toast('Arquivo inválido'); }
+      };
+      rd.readAsText(f);
+    };
+    inp.click(); return;
+  }
+});
+
+/* ================= BOOT ================= */
+function paintBrand(){
+  $('#shopName').textContent = S.shop;
+  $('#shopHandle').textContent = S.handle;
+  document.title = S.shop + ' · Agendamento';
+}
+async function boot(){
+  paintBrand();
+  render();
+  if(cloud()){
+    const r = await API.pullCatalog();
+    if(r.ok){ paintBrand(); render(); }
+    else { toast('Sem conexão com a agenda: ' + r.error); }
+  }
+}
+boot();
+</script>
+</body>
+</html>

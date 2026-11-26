@@ -291,7 +291,7 @@ const DEFAULTS = {
   catalogVersion: CATALOG_VERSION
 };
 
-const DEFAULTS_CFG = { url:'https://fjxrkfliobdzvrwqnmme.supabase.co', key:'sb_publishable_0t4lsQz3A_RQWsnWaQQbmw_uBnAQzQ2', ownerEmail:'igorgustavodelima@hotmail.com', ownerToken:'', ownerExp:0 };
+const DEFAULTS_CFG = { url:'https://fjxrkfliobdzvrwqnmme.supabase.co', key:'sb_publishable_0t4lsQz3A_RQWsnWaQQbmw_uBnAQzQ2', fnBase:'https://fjxrkfliobdzvrwqnmme.supabase.co/functions/v1', ownerEmail:'igorgustavodelima@hotmail.com', ownerToken:'', ownerExp:0 };
 
 function defaults(){ return JSON.parse(JSON.stringify(DEFAULTS)); }
 
@@ -480,6 +480,51 @@ const API = {
       }
       return r;
     }catch(e){ return { ok:false, error:e.message }; }
+  },
+
+  /* ---- pagamento real (Edge Function pay-create) ---- */
+  async payLink(bookingId){
+    if(!cloud()) return { ok:false, error:'modo_local' };
+    const cfg = CFG();
+    if(!cfg.fnBase) return { ok:false, error:'gateway_indisponivel' };
+    const resp = await fetch(cfg.fnBase.replace(/\/$/, '') + '/pay-create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: cfg.anon },
+      body: JSON.stringify({ booking_id: bookingId })
+    });
+    let out = {};
+    try{ out = await resp.json(); }catch(_){ }
+    if(!resp.ok && !out.error) out = { ok:false, error:'gateway_recusou' };
+    return out;
+  },
+
+  /* ---- conferir se um pagamento pendente foi aprovado ----
+     Pergunta à Edge Function pay-check, que consulta a InfinitePay e,
+     se o pagamento estiver aprovado, confirma a reserva. Funciona sem
+     webhook configurado: o cliente não consegue forjar, porque quem
+     responde "pago" é a InfinitePay, não o navegador. */
+  async checkPaid(bookingId, slug){
+    if(!cloud()) return null;
+    const cfg = CFG();
+    if(cfg.fnBase){
+      try{
+        const resp = await fetch(cfg.fnBase.replace(/\/$/, '') + '/pay-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.anon },
+          body: JSON.stringify({ booking_id: bookingId, slug: slug || null })
+        });
+        const out = await resp.json();
+        if(out && out.ok && out.status === 'pago'){
+          // já confirmado no banco: devolve o registro atualizado
+          const b = await this.rpc('get_booking', { p_id: bookingId });
+          return b ? toLocalShape(b) : null;
+        }
+      }catch(e){ /* cai no fallback abaixo */ }
+    }
+    try{
+      const b = await this.rpc('get_booking', { p_id: bookingId });
+      return b ? toLocalShape(b) : null;
+    }catch(e){ return null; }
   },
 
   /* ---- meus agendamentos ---- */
@@ -866,7 +911,7 @@ function viewServices(){
   <div class="actions">
     <button class="btn" data-act="go-step" data-step="1" ${U.service?'':'disabled'}>Ver horários</button>
   </div>
-  <p class="tinynote">${S.ownerName ? esc(S.ownerName) + ' · ' : ''}${esc(S.ownerWhats || '')}${S.ownerWhats ? ' · ' : ''}Pagamento simulado nesta versão de teste.</p>`;
+  <p class="tinynote">${S.ownerName ? esc(S.ownerName) + ' · ' : ''}${esc(S.ownerWhats || '')}${S.ownerWhats ? ' · ' : ''}Pagamento seguro pela InfinitePay.</p>`;
 }
 
 function viewDateTime(){
@@ -953,67 +998,20 @@ function viewPagamento(){
   const opt = (m, ico, nm, mt) => `<div class="opt ${U.method===m?'sel':''}" data-act="method" data-m="${m}">
       <span class="ico">${ico}</span><span><span class="nm">${nm}</span><span class="mt">${mt}</span></span><span class="dot"></span></div>`;
 
-  let body;
-  if(U.method === 'pix'){
-    body = `
-      <div class="qr">${qrCells('PIX-SIMULADO-COASTCLUB-'+U.date+'-'+U.time+'-'+q.total)}</div>
-      <div style="text-align:center;margin-bottom:10px"><span class="badge pendente">Simulado</span></div>
-      <div class="code">00020126580014BR.GOV.BCB.PIX0136SIMULADO-COAST-CLUB-${esc(U.date.replace(/-/g,''))}520400005303986540${String((temSinal()?q.deposit:q.total).toFixed(2)).replace('.','')}5802BR5920COAST CLUB BARBERSHOP6009SAO PAULO62070503***6304A1B2</div>
-      <div class="actions"><button class="btn ghost sm" data-act="copy-pix">Copiar código</button></div>
-      <button class="btn" style="margin-top:12px" data-act="pay">Já paguei · confirmar ${brl(temSinal() ? q.deposit : q.total)}</button>`;
-  } else {
-    body = `
-      <label class="f"><span>Número do cartão</span>
-        <input class="inp" id="c-num" inputmode="numeric" placeholder="0000 0000 0000 0000" maxlength="19">
-      </label>
-      <label class="f"><span>Nome impresso no cartão</span>
-        <input class="inp" id="c-name" placeholder="NOME SOBRENOME" style="text-transform:uppercase">
-      </label>
-      <div class="row">
-        <label class="f"><span>Validade</span><input class="inp" id="c-exp" inputmode="numeric" placeholder="MM/AA" maxlength="5"></label>
-        <label class="f"><span>CVV</span><input class="inp" id="c-cvv" inputmode="numeric" placeholder="123" maxlength="4"></label>
-      </div>
-      <button class="btn" style="margin-top:16px" data-act="pay" data-with-card="1">Pagar ${brl(temSinal() ? q.deposit : q.total)}</button>
-      <p class="tinynote">Ambiente de teste: nenhum dado de cartão sai daqui, só os 4 últimos dígitos ficam salvos.</p>`;
-  }
+  let body = `
+    <button class="btn" style="margin-top:16px" data-act="pay">Pagar ${brl(temSinal() ? q.deposit : q.total)} com Pix ou cartão</button>
+    <p class="tinynote">Você vai para a página segura da InfinitePay. O horário fica reservado por ${holdMin()} minutos; assim que o pagamento é aprovado, a confirmação chega aqui sozinha.</p>`;
 
   return `
   ${stepsBar(3)}
   <h2 class="sec">4 · Pagamento</h2>
-  ${opt('pix','🔳','Pix','Confirma na hora')}
-  ${opt('card','💳','Cartão de crédito','Simulado nesta versão')}
   ${avisoSinal(q)}
   ${body}
   ${sum}
   <div class="actions"><button class="btn ghost sm" data-act="go-step" data-step="2">Voltar</button></div>
-  <p class="tinynote">Pagamento simulado: o agendamento é confirmado no teste, sem cobrança real.</p>`;
+  <p class="tinynote">Pagamento processado pela InfinitePay. O comprovante chega no seu WhatsApp.</p>`;
 }
 
-function qrCells(seed){
-  let h = 2166136261;
-  for(let i = 0; i < seed.length; i++){ h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
-  const N = 25, cells = [];
-  const finder = (r,c) => {
-    const inBox = (r0,c0) => r >= r0 && r < r0+7 && c >= c0 && c < c0+7;
-    if(inBox(0,0) || inBox(0,N-7) || inBox(N-7,0)){
-      const rr = r < 7 ? r : r - (N-7), cc = c < 7 ? c : c - (N-7);
-      const edge = rr === 0 || rr === 6 || cc === 0 || cc === 6;
-      const core = rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4;
-      return edge || core;
-    }
-    return null;
-  };
-  for(let r = 0; r < N; r++){
-    for(let c = 0; c < N; c++){
-      const f = finder(r,c);
-      let on;
-      if(f !== null) on = f;
-      else { h = Math.imul(h ^ (r*31+c), 2246822519); on = ((h >>> 13) & 1) === 1; }
-      cells.push('<i class="' + (on ? 'b' : '') + '"></i>');
-    }
-  }
-  return cells.join('');
-}
 
 function viewDone(){
   const b = U.last;
@@ -1331,19 +1329,8 @@ async function toPay(){
   U.step = 3; render();
 }
 
-async function finishPayment(withCard){
+async function finishPayment(){
   let last4 = '';
-  if(withCard){
-    const num = onlyDigits($('#c-num')?.value || '');
-    const nm = ($('#c-name')?.value || '').trim();
-    const exp = ($('#c-exp')?.value || '').trim();
-    const cvv = onlyDigits($('#c-cvv')?.value || '');
-    if(num.length < 13){ toast('Número do cartão incompleto'); return; }
-    if(nm.length < 3){ toast('Nome no cartão incompleto'); return; }
-    if(!/^\d{2}\/\d{2}$/.test(exp)){ toast('Validade no formato MM/AA'); return; }
-    if(cvv.length < 3){ toast('CVV inválido'); return; }
-    last4 = num.slice(-4);
-  }
   if(isTaken(U.date, U.time) || isPast(U.date, U.time)){
     toast('Esse horário acabou de ser pego. Escolha outro.');
     U.step = 1; U.time = null; U.quote = null; render(); return;
@@ -1377,11 +1364,47 @@ async function finishPayment(withCard){
   if(!cloud()) b.mine = true;
 
   U.last = b;
+  addMineId(b.id, U.client.wa);
+
+  // ---- pagamento real: manda para o checkout da InfinitePay ----
+  // A reserva nasceu 'pendente'. Só vira 'pago' quando o webhook da
+  // InfinitePay confirmar. Não existe mais botão "já paguei".
+  if(cloud() && b.id){
+    if(btn) btn.innerHTML = '<span class="spin"></span>Abrindo o pagamento…';
+    try{
+      const pay = await API.payLink(b.id);
+      if(pay && pay.ok && pay.url){
+        // guarda o id para conferir quando o cliente voltar do checkout
+        try{ localStorage.setItem('coastclub.pendingPay', JSON.stringify({ id:b.id, wa:U.client.wa, at:Date.now() })); }catch(_){}
+        toast('Abrindo o pagamento…');
+        setTimeout(() => { location.href = pay.url; }, 400);
+        return;
+      }
+      const motivo = ({
+        valor_minimo:'O valor mínimo para pagamento online é R$ 1,00.',
+        reserva_ja_resolvida:'Essa reserva já foi resolvida.',
+        gateway_recusou:'O pagamento está indisponível agora. Tente de novo em instantes.'
+      })[pay && pay.error] || 'Não consegui abrir o pagamento.';
+      toast(motivo);
+      // sem gateway, a reserva fica pendente (prazo corre) e some sozinha
+      U.step = 4;
+      U.service = null; U.time = null; U.coupon = ''; U.quote = null;
+      U.client = { name:'', wa:'', email:'' };
+      render();
+      return;
+    }catch(e){
+      toast('Não consegui abrir o pagamento: ' + e.message);
+      U.step = 4;
+      render();
+      return;
+    }
+  }
+
+  // modo local (sem nuvem): segue como antes, para demonstração
   U.step = 4;
   U.service = null; U.time = null; U.coupon = ''; U.quote = null;
   U.client = { name:'', wa:'', email:'' };
   render();
-  setTimeout(() => toast('Pagamento aprovado (simulado)'), 120);
 }
 
 async function loadMine(){
@@ -1426,7 +1449,7 @@ document.addEventListener('click', async e => {
   }
   if(act === 'to-pay'){ await toPay(); return; }
   if(act === 'method'){ U.method = el.dataset.m; render(); return; }
-  if(act === 'pay'){ await finishPayment(el.dataset.withCard === '1'); return; }
+  if(act === 'pay'){ await finishPayment(); return; }
   if(act === 'new'){ U.step = 0; U.tab = 'agendar'; render(); return; }
   if(act === 'meus-cancel'){
     const id = el.dataset.id;
@@ -1445,11 +1468,7 @@ document.addEventListener('click', async e => {
     else toast(r.error === 'whatsapp_nao_confere' ? 'WhatsApp não confere' : 'Não consegui cancelar');
     return;
   }
-  if(act === 'copy-pix'){
-    const txt = document.querySelector('.code')?.textContent || '';
-    navigator.clipboard?.writeText(txt).then(()=>toast('Código copiado'), ()=>toast('Selecione e copie o código'));
-    return;
-  }
+
 
   /* painel */
   if(act === 'login'){
@@ -1616,6 +1635,52 @@ function paintBrand(){
   $('#shopHandle').textContent = S.handle;
   document.title = S.shop + ' · Agendamento';
 }
+/* ---------- volta do checkout da InfinitePay ----------
+   A InfinitePay devolve o cliente com ?pago=1&reserva=<id>.
+   Nada aqui marca como pago: só conferimos no banco e mostramos o
+   resultado. Quem confirma é o webhook. */
+async function checarVoltaDoPagamento(){
+  const qs = new URLSearchParams(location.search);
+  let id = qs.get('reserva');
+
+  if(!id){
+    try{
+      const p = JSON.parse(localStorage.getItem('coastclub.pendingPay') || 'null');
+      if(p && p.id && Date.now() - p.at < 60 * 60 * 1000) id = p.id;
+    }catch(_){ }
+  }
+  if(!id) return;
+
+  // o slug pode vir na URL de retorno da InfinitePay
+  const slug = qs.get('slug') || qs.get('invoice_slug') || null;
+
+  // mostra o comprovante/estado assim que o cliente volta
+  U.last = await API.checkPaid(id, slug);
+  if(U.last){
+    U.step = 4;
+    render();
+    // o webhook pode chegar segundos depois: confere de novo
+    for(let i = 0; i < 6; i++){
+      if(U.last && U.last.status === 'pago') break;
+      await new Promise(r => setTimeout(r, 2500));
+      const b = await API.checkPaid(id, slug);
+      if(b){
+        const virou = b.status === 'pago' && (!U.last || U.last.status !== 'pago');
+        U.last = b;
+        U.step = 4;
+        render();
+        if(virou){ toast('Pagamento aprovado! Seu horário está confirmado.'); break; }
+      }
+    }
+    if(U.last && U.last.status === 'pendente'){
+      toast('Ainda não recebemos a confirmação. Se você pagou, ela chega em instantes.');
+    }
+  }
+  try{ localStorage.removeItem('coastclub.pendingPay'); }catch(_){ }
+  // limpa a URL para o F5 não repetir o fluxo
+  if(location.search) history.replaceState({}, '', location.pathname);
+}
+
 async function boot(){
   paintBrand();
   render();
@@ -1624,6 +1689,7 @@ async function boot(){
     if(r.ok){ paintBrand(); render(); }
     else { toast('Sem conexão com a agenda: ' + r.error); }
   }
+  checarVoltaDoPagamento();
 }
 boot();
 </script>
