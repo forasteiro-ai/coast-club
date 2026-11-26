@@ -274,6 +274,7 @@ const DEFAULTS = {
   pin: '1234',
   depositPct: 100,
   maxActive: 1,
+  holdMinutes: 15,
   services: [
     { id:'corte-adulto',   name:'Corte Adulto',        price:35, ico:'✂️' },
     { id:'corte-infantil', name:'Corte Infantil',      price:35, ico:'🧒' },
@@ -413,6 +414,7 @@ const API = {
       if(c.lunch_hour != null) S.lunchHour = c.lunch_hour;
       if(c.deposit_pct != null) S.depositPct = Number(c.deposit_pct);
       if(c.max_active_per_wa != null) S.maxActive = Number(c.max_active_per_wa);
+      if(c.hold_minutes != null) S.holdMinutes = Number(c.hold_minutes);
       if(Array.isArray(svc) && svc.length){
         S.services = svc.map(s => ({ id:s.id, name:s.name, price:Number(s.price), ico:s.ico }));
       }
@@ -1000,7 +1002,7 @@ function viewPagamento(){
 
   let body = `
     <button class="btn" style="margin-top:16px" data-act="pay">Pagar ${brl(temSinal() ? q.deposit : q.total)} com Pix ou cartão</button>
-    <p class="tinynote">Você vai para a página segura da InfinitePay. O horário fica reservado por ${holdMin()} minutos; assim que o pagamento é aprovado, a confirmação chega aqui sozinha.</p>`;
+    <p class="tinynote">Você vai para a página segura da InfinitePay. O horário fica reservado por ${Number(S.holdMinutes || 15)} minutos; assim que o pagamento é aprovado, a confirmação chega aqui sozinha.</p>`;
 
   return `
   ${stepsBar(3)}
