@@ -487,11 +487,11 @@ const API = {
   /* ---- pagamento real (Edge Function pay-create) ---- */
   async payLink(bookingId){
     if(!cloud()) return { ok:false, error:'modo_local' };
-    const cfg = CFG();
+    const cfg = CFG;
     if(!cfg.fnBase) return { ok:false, error:'gateway_indisponivel' };
     const resp = await fetch(cfg.fnBase.replace(/\/$/, '') + '/pay-create', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: cfg.anon },
+      headers: { 'Content-Type': 'application/json', apikey: cfg.key },
       body: JSON.stringify({ booking_id: bookingId })
     });
     let out = {};
@@ -507,12 +507,12 @@ const API = {
      responde "pago" é a InfinitePay, não o navegador. */
   async checkPaid(bookingId, slug){
     if(!cloud()) return null;
-    const cfg = CFG();
+    const cfg = CFG;
     if(cfg.fnBase){
       try{
         const resp = await fetch(cfg.fnBase.replace(/\/$/, '') + '/pay-check', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: cfg.anon },
+          headers: { 'Content-Type': 'application/json', apikey: cfg.key },
           body: JSON.stringify({ booking_id: bookingId, slug: slug || null })
         });
         const out = await resp.json();
