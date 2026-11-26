@@ -173,6 +173,14 @@ nav.tabbar button{flex:1;display:grid;place-items:center;gap:3px;padding:7px 0;b
 nav.tabbar button .g{font-size:19px;line-height:1}
 nav.tabbar button.on{color:var(--gold2)}
 
+.depbox{border:1.5px solid rgba(224,166,58,.55);background:rgba(224,166,58,.10);
+  border-radius:var(--r);padding:14px;margin:14px 0}
+.depbox .dt{font-size:13px;font-weight:700;color:#f0c477;margin-bottom:8px;letter-spacing:.02em}
+.depbox p{margin:0 0 8px;font-size:12.5px;line-height:1.55;color:#e8e2d4}
+.depbox p:last-child{margin-bottom:0}
+.depbox .strong{color:#ffd98a;font-weight:700}
+.depbox ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.6;color:#e8e2d4}
+.depbox li{margin-bottom:4px}
 .toast{position:fixed;left:50%;bottom:104px;transform:translate(-50%,14px);z-index:60;
   background:#23232b;border:1px solid var(--line);color:var(--txt);font-size:13.5px;
   padding:11px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);
@@ -250,6 +258,7 @@ const DEFAULTS = {
   closeHour: 17,
   lunchHour: 12,
   pin: '1234',
+  depositPct: 30,
   services: [
     { id:'corte-adulto',   name:'Corte Adulto',        price:35, ico:'✂️' },
     { id:'corte-infantil', name:'Corte Infantil',      price:35, ico:'🧒' },
@@ -387,6 +396,7 @@ const API = {
       if(c.open_hour != null) S.openHour = c.open_hour;
       if(c.close_hour != null) S.closeHour = c.close_hour;
       if(c.lunch_hour != null) S.lunchHour = c.lunch_hour;
+      if(c.deposit_pct != null) S.depositPct = Number(c.deposit_pct);
       if(Array.isArray(svc) && svc.length){
         S.services = svc.map(s => ({ id:s.id, name:s.name, price:Number(s.price), ico:s.ico }));
       }
@@ -433,6 +443,7 @@ const API = {
         id, code:id, date:payload.date, time:payload.time,
         serviceId:svc.id, serviceName:svc.name, base:svc.price,
         coupon:q.coupon || '', couponPct:q.coupon_pct || 0, total:q.total,
+        depositPct: q.deposit_pct || 0, deposit: q.deposit || 0,
         client:{ name:payload.name, wa:payload.wa, email:payload.email || '' },
         pay:{ method:payload.method, last4:payload.last4 || '', status: payload.method === 'pix' ? 'pago' : 'pendente' },
         status: payload.method === 'pix' ? 'pago' : 'pendente',
@@ -511,7 +522,8 @@ const API = {
     const body = {
       shop: patch.shop, handle: patch.handle,
       owner_name: patch.ownerName, owner_whats: patch.ownerWhats,
-      open_hour: patch.openHour, close_hour: patch.closeHour, lunch_hour: patch.lunchHour
+      open_hour: patch.openHour, close_hour: patch.closeHour, lunch_hour: patch.lunchHour,
+      deposit_pct: patch.depositPct
     };
     Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
     await this.ownerRest('settings?id=eq.1', { method:'PATCH', body: JSON.stringify(body) });
@@ -548,6 +560,8 @@ function toLocalShape(b){
     total: Number(b.total),
     client: { name: b.client_name || (b.client && b.client.name) || '', wa: b.client_wa || (b.client && b.client.wa) || '', email: b.client_email || (b.client && b.client.email) || '' },
     pay: { method: b.pay_method || (b.pay && b.pay.method) || 'pix', last4: b.pay_last4 || (b.pay && b.pay.last4) || '', status: b.status },
+    depositPct: Number(b.deposit_pct || 0),
+    deposit: Number(b.deposit || 0),
     status: b.status,
     createdAt: b.created_at || b.createdAt,
     mine: true
@@ -630,6 +644,23 @@ function msgCancelamento(b, quem){
     'O horário já voltou a ficar livre na agenda.'
   ];
   return linha.join('\n');
+}
+/* ---- aviso do sinal, reutilizado em todas as telas ---- */
+function depPct(){ return Number(S.depositPct != null ? S.depositPct : 30); }
+function temSinal(){ return depPct() > 0; }
+function avisoSinal(q){
+  if(!temSinal()) return '';
+  const dep = q && q.deposit != null ? q.deposit : 0;
+  const rest = q && q.rest != null ? q.rest : 0;
+  return `
+  <div class="depbox">
+    <div class="dt">⚠️ Atenção: este é apenas o sinal</div>
+    <p>Você está pagando <span class="strong">${brl(dep)}</span> (${depPct()}% do valor) apenas para
+       <span class="strong">manter seu agendamento ativo</span>. O restante de <span class="strong">${brl(rest)}</span>
+       é pago no dia, na barbearia.</p>
+    <p class="strong" style="margin-top:10px">Em caso de cancelamento, o sinal não será restituído.</p>
+    <p style="font-size:11.5px;color:#b8b0a0;margin-top:8px">Ao confirmar, você concorda com esta condição.</p>
+  </div>`;
 }
 function waLink(phone, text){
   let p = onlyDigits(phone);
@@ -838,7 +869,12 @@ function viewPagamento(){
       <div class="l"><span>${esc(svc.name)}</span><b>${brl(q.base)}</b></div>
       ${q.off > 0 ? `<div class="l"><span>Cupom ${esc(q.coupon)} (−${q.coupon_pct}%)</span><b>− ${brl(q.off)}</b></div>` : ''}
       <div class="l"><span>${fmtDate(U.date)} às ${U.time}</span><b>1h</b></div>
-      <div class="tot"><span>Total</span><span>${brl(q.total)}</span></div>
+      ${temSinal() ? `
+      <div class="l"><span>Total do serviço</span><b>${brl(q.total)}</b></div>
+      <div class="l"><span>Sinal para reservar (${depPct()}%)</span><b style="color:#f0c477">${brl(q.deposit)}</b></div>
+      <div class="l"><span>Restante no dia</span><b>${brl(q.rest)}</b></div>
+      <div class="tot"><span>Pagar agora</span><span style="color:#f0c477">${brl(q.deposit)}</span></div>
+      ` : `<div class="tot"><span>Total</span><span>${brl(q.total)}</span></div>`}
     </div>`;
 
   const opt = (m, ico, nm, mt) => `<div class="opt ${U.method===m?'sel':''}" data-act="method" data-m="${m}">
@@ -849,9 +885,9 @@ function viewPagamento(){
     body = `
       <div class="qr">${qrCells('PIX-SIMULADO-COASTCLUB-'+U.date+'-'+U.time+'-'+q.total)}</div>
       <div style="text-align:center;margin-bottom:10px"><span class="badge pendente">Simulado</span></div>
-      <div class="code">00020126580014BR.GOV.BCB.PIX0136SIMULADO-COAST-CLUB-${esc(U.date.replace(/-/g,''))}5204000053039865802BR5920COAST CLUB BARBERSHOP6009SAO PAULO62070503***6304A1B2</div>
+      <div class="code">00020126580014BR.GOV.BCB.PIX0136SIMULADO-COAST-CLUB-${esc(U.date.replace(/-/g,''))}520400005303986540${String((temSinal()?q.deposit:q.total).toFixed(2)).replace('.','')}5802BR5920COAST CLUB BARBERSHOP6009SAO PAULO62070503***6304A1B2</div>
       <div class="actions"><button class="btn ghost sm" data-act="copy-pix">Copiar código</button></div>
-      <button class="btn" style="margin-top:12px" data-act="pay">Já paguei · confirmar ${brl(q.total)}</button>`;
+      <button class="btn" style="margin-top:12px" data-act="pay">Já paguei · confirmar ${brl(temSinal() ? q.deposit : q.total)}</button>`;
   } else {
     body = `
       <label class="f"><span>Número do cartão</span>
@@ -864,7 +900,7 @@ function viewPagamento(){
         <label class="f"><span>Validade</span><input class="inp" id="c-exp" inputmode="numeric" placeholder="MM/AA" maxlength="5"></label>
         <label class="f"><span>CVV</span><input class="inp" id="c-cvv" inputmode="numeric" placeholder="123" maxlength="4"></label>
       </div>
-      <button class="btn" style="margin-top:16px" data-act="pay" data-with-card="1">Pagar ${brl(q.total)}</button>
+      <button class="btn" style="margin-top:16px" data-act="pay" data-with-card="1">Pagar ${brl(temSinal() ? q.deposit : q.total)}</button>
       <p class="tinynote">Ambiente de teste: nenhum dado de cartão sai daqui, só os 4 últimos dígitos ficam salvos.</p>`;
   }
 
@@ -873,6 +909,7 @@ function viewPagamento(){
   <h2 class="sec">4 · Pagamento</h2>
   ${opt('pix','🔳','Pix','Confirma na hora')}
   ${opt('card','💳','Cartão de crédito','Simulado nesta versão')}
+  ${avisoSinal(q)}
   ${body}
   ${sum}
   <div class="actions"><button class="btn ghost sm" data-act="go-step" data-step="2">Voltar</button></div>
@@ -920,8 +957,19 @@ function viewDone(){
     <div class="l"><span>WhatsApp</span><b>${esc(b.client.wa)}</b></div>
     <div class="l"><span>Pagamento</span><b>${b.pay.method === 'pix' ? 'Pix' : 'Cartão'} ${b.pay.last4 ? '••'+esc(b.pay.last4) : ''}</b></div>
     <div class="l"><span>Status</span><b style="color:${b.status==='pago'?'#8de3bb':'#f0c477'}">${b.status === 'pago' ? 'Pago' : 'A confirmar'}</b></div>
-    <div class="tot"><span>Total</span><span>${brl(b.total)}</span></div>
+    ${Number(b.deposit) > 0 ? `
+    <div class="l"><span>Total do serviço</span><b>${brl(b.total)}</b></div>
+    <div class="l"><span>Sinal pago agora</span><b style="color:#8de3bb">${brl(b.deposit)}</b></div>
+    <div class="tot"><span>Pagar no dia</span><span style="color:#f0c477">${brl(Number(b.total) - Number(b.deposit))}</span></div>
+    ` : `<div class="tot"><span>Total</span><span>${brl(b.total)}</span></div>`}
   </div>
+  ${Number(b.deposit) > 0 ? `
+  <div class="depbox">
+    <div class="dt">⚠️ Guarde esta informação</div>
+    <p>O valor de <span class="strong">${brl(b.deposit)}</span> é o sinal que mantém seu horário reservado.
+       O restante de <span class="strong">${brl(Number(b.total) - Number(b.deposit))}</span> você paga no dia.</p>
+    <p class="strong" style="margin-top:10px">Se você cancelar, o sinal não será devolvido.</p>
+  </div>` : ''}
   <div class="actions">
     <button class="btn" data-act="new">Agendar outro</button>
     <button class="btn ghost" data-act="tab" data-tab="meus">Ver meus horários</button>
@@ -941,7 +989,7 @@ function viewMeus(){
         <div class="tm">${b.time}</div>
         <div>
           <div class="nm">${esc(b.serviceName)}</div>
-          <div class="mt">${fmtDate(b.date)} · ${brl(b.total)}</div>
+          <div class="mt">${fmtDate(b.date)} · ${Number(b.deposit) > 0 ? brl(b.deposit) + ' de sinal · ' + brl(Number(b.total)-Number(b.deposit)) + ' no dia' : brl(b.total)}</div>
         </div>
         <div class="rt"><span class="badge ${b.status}">${b.status === 'pago' ? 'Pago' : b.status === 'cancelado' ? 'Cancelado' : 'Pendente'}</span></div>
       </div>
@@ -1028,6 +1076,9 @@ function viewAgendaDia(){
   const d = U.adminDate;
   const list = (U.adminDay || []).slice().sort((a,b) => a.time.localeCompare(b.time));
   const act = list.filter(b => b.status !== 'cancelado');
+  const temDep = act.some(b => Number(b.deposit) > 0);
+  const sinais  = act.reduce((s,b) => s + Number(b.deposit || 0), 0);
+  const aReceber = act.reduce((s,b) => s + (Number(b.total) - Number(b.deposit || 0)), 0);
   const pago = act.filter(b => b.status === 'pago').reduce((s,b) => s + b.total, 0);
   const pend = act.filter(b => b.status === 'pendente').reduce((s,b) => s + b.total, 0);
 
@@ -1044,9 +1095,10 @@ function viewAgendaDia(){
   const kpi = `
     <div class="kpi">
       <div><div class="k">Cortes</div><div class="v">${act.length}</div></div>
-      <div><div class="k">Recebido</div><div class="v g">${brl(pago)}</div></div>
-      <div><div class="k">A receber</div><div class="v y">${brl(pend)}</div></div>
-    </div>`;
+      <div><div class="k">${temDep ? 'Sinais' : 'Recebido'}</div><div class="v g">${brl(temDep ? sinais : pago)}</div></div>
+      <div><div class="k">${temDep ? 'No balcão' : 'A receber'}</div><div class="v y">${brl(temDep ? aReceber : pend)}</div></div>
+    </div>
+    ${temDep ? `<p class="tinynote" style="margin-top:-4px">Sinal já pago · o restante o cliente paga na barbearia</p>` : ''}`;
 
   const cards = list.length ? list.map(b => {
     const msg = 'Olá ' + (b.client.name.split(' ')[0]||'') + '! Aqui é da ' + S.shop + '. Confirmando seu ' + b.serviceName + ' ' + fmtDate(b.date) + ' às ' + b.time + '. Valor ' + brl(b.total) + '. Qualquer coisa me chama por aqui.';
@@ -1057,6 +1109,7 @@ function viewAgendaDia(){
         <div style="min-width:0">
           <div class="nm">${esc(b.client.name)}</div>
           <div class="mt">${esc(b.serviceName)} · ${brl(b.total)}${b.coupon? ' · cupom '+esc(b.coupon):''}</div>
+          ${Number(b.deposit) > 0 ? `<div class="mt" style="color:#f0c477">Sinal pago ${brl(b.deposit)} · falta ${brl(Number(b.total)-Number(b.deposit))}</div>` : ''}
           <div class="mt">${esc(b.client.wa)}${b.client.email ? ' · ' + esc(b.client.email) : ''}</div>
         </div>
         <div class="rt">
@@ -1065,7 +1118,7 @@ function viewAgendaDia(){
         </div>
       </div>
       <div class="mini">
-        ${b.status === 'pendente' ? `<button class="btn sm" data-act="adm-pay" data-id="${esc(b.id)}">Receber ${brl(b.total)}</button>` : ''}
+        ${b.status === 'pendente' ? `<button class="btn sm" data-act="adm-pay" data-id="${esc(b.id)}">Receber ${brl(Number(b.total) - Number(b.deposit || 0))}</button>` : ''}
         ${b.status !== 'cancelado' ? `<a class="btn wa sm" style="text-decoration:none;text-align:center" target="_blank" href="${waLink(b.client.wa, msg)}">WhatsApp</a>` : ''}
         ${b.status !== 'cancelado' ? `<button class="btn danger sm" data-act="adm-cancel" data-id="${esc(b.id)}">Cancelar</button>` : ''}
         ${b.status === 'cancelado' ? `<a class="btn ghost sm" style="text-decoration:none;text-align:center" target="_blank" href="${waLink(b.client.wa, msgCancelCliente(b))}">Avisar cliente</a>` : ''}
@@ -1141,6 +1194,8 @@ function viewAjustes(){
     <label class="f"><span>Instagram</span><input class="inp" id="s-handle" value="${esc(S.handle)}"></label>
     <label class="f"><span>Nome do dono</span><input class="inp" id="s-owner" value="${esc(S.ownerName||'')}" placeholder="Igor"></label>
     <label class="f"><span>WhatsApp do dono</span><input class="inp" id="s-wa" inputmode="numeric" value="${esc(S.ownerWhats)}" placeholder="(11) 90000-0000"></label>
+    <label class="f"><span>Sinal para reservar (%)</span><input class="inp" id="s-dep" inputmode="numeric" value="${depPct()}" placeholder="30"></label>
+    <p class="tinynote" style="margin-top:-6px">Percentual cobrado para segurar o horário. O restante é pago na barbearia. Use 0 para não cobrar sinal.</p>
     ${cloud() ? '' : `<label class="f"><span>PIN do painel</span><input class="inp" id="s-pin" inputmode="numeric" maxlength="6" value="${esc(S.pin)}"></label>`}
     <button class="btn" style="margin-top:14px" data-act="save-settings">Salvar ajustes</button>
   </div>
@@ -1403,12 +1458,14 @@ document.addEventListener('click', async e => {
     if(own && own.value.trim()) S.ownerName = own.value.trim();
     const pinEl = $('#s-pin');
     if(pinEl){ const pin = (pinEl.value || '').trim(); if(/^\d{4,6}$/.test(pin)) S.pin = pin; }
+    const depEl = $('#s-dep');
+    if(depEl){ const dp = Number(onlyDigits(depEl.value)); if(dp >= 0 && dp <= 100) S.depositPct = dp; }
     save(); paintBrand();
 
     if(cloud()){
       try{
         for(const s of updates) await API.saveService(s);
-        await API.saveSettings({ shop:S.shop, handle:S.handle, ownerName:S.ownerName, ownerWhats:S.ownerWhats, openHour:S.openHour, closeHour:S.closeHour, lunchHour:S.lunchHour });
+        await API.saveSettings({ shop:S.shop, handle:S.handle, ownerName:S.ownerName, ownerWhats:S.ownerWhats, openHour:S.openHour, closeHour:S.closeHour, lunchHour:S.lunchHour, depositPct:S.depositPct });
         await API.pullCatalog();
         toast('Ajustes salvos na nuvem');
       }catch(err){ toast('Salvei aqui, mas a nuvem recusou: ' + err.message); }
