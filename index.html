@@ -645,6 +645,21 @@ function msgCancelamento(b, quem){
   ];
   return linha.join('\n');
 }
+/* Garante deposit/rest mesmo quando o banco ainda não tem a migração do sinal.
+   Assim a tela nunca mostra "R$ 0,00" de sinal por causa de schema desatualizado. */
+function normalizaQuote(q){
+  if(!q || !q.ok) return q;
+  const pct = depPct();
+  const total = Number(q.total || 0);
+  if(pct <= 0){ q.deposit_pct = 0; q.deposit = 0; q.rest = total; return q; }
+  if(q.deposit == null || Number.isNaN(Number(q.deposit))){
+    q.deposit_pct = pct;
+    q.deposit = Math.round(total * pct) / 100;
+    q.rest = Math.round((total - q.deposit) * 100) / 100;
+  }
+  return q;
+}
+
 /* ---- aviso do sinal, reutilizado em todas as telas ---- */
 function depPct(){ return Number(S.depositPct != null ? S.depositPct : 30); }
 function temSinal(){ return depPct() > 0; }
@@ -1244,7 +1259,7 @@ async function toPay(){
   if(dg.length < 10 || dg.length > 11){ toast('WhatsApp com DDD (10 ou 11 dígitos)'); return; }
   if(U.client.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(U.client.email)){ toast('E-mail inválido'); return; }
 
-  U.quote = await API.quote(U.service, U.coupon);
+  U.quote = normalizaQuote(await API.quote(U.service, U.coupon));
   if(U.quote.coupon && U.coupon) toast('Cupom aplicado: −' + U.quote.coupon_pct + '%');
   else if(U.coupon) toast('Cupom inválido, segue sem desconto');
   U.step = 3; render();
