@@ -259,6 +259,7 @@ const DEFAULTS = {
   lunchHour: 12,
   pin: '1234',
   depositPct: 30,
+  maxActive: 1,
   services: [
     { id:'corte-adulto',   name:'Corte Adulto',        price:35, ico:'✂️' },
     { id:'corte-infantil', name:'Corte Infantil',      price:35, ico:'🧒' },
@@ -397,6 +398,7 @@ const API = {
       if(c.close_hour != null) S.closeHour = c.close_hour;
       if(c.lunch_hour != null) S.lunchHour = c.lunch_hour;
       if(c.deposit_pct != null) S.depositPct = Number(c.deposit_pct);
+      if(c.max_active_per_wa != null) S.maxActive = Number(c.max_active_per_wa);
       if(Array.isArray(svc) && svc.length){
         S.services = svc.map(s => ({ id:s.id, name:s.name, price:Number(s.price), ico:s.ico }));
       }
@@ -523,7 +525,8 @@ const API = {
       shop: patch.shop, handle: patch.handle,
       owner_name: patch.ownerName, owner_whats: patch.ownerWhats,
       open_hour: patch.openHour, close_hour: patch.closeHour, lunch_hour: patch.lunchHour,
-      deposit_pct: patch.depositPct
+      deposit_pct: patch.depositPct,
+      max_active_per_wa: patch.maxActive
     };
     Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
     await this.ownerRest('settings?id=eq.1', { method:'PATCH', body: JSON.stringify(body) });
@@ -580,6 +583,18 @@ function addMineId(id, wa){
     m[id] = onlyDigits(wa);
     try{ localStorage.setItem('coastclub.wa', JSON.stringify(m)); }catch(e){}
   }
+}
+/* Quantas reservas ativas (futuras) este aparelho já tem daquele WhatsApp.
+   É só um aviso antecipado: quem decide de verdade é o banco. */
+function ativosDoWa(wa){
+  const d = onlyDigits(wa);
+  if(!d) return 0;
+  const now = Date.now();
+  return (U.myList || []).filter(b =>
+    b.status !== 'cancelado' &&
+    whenOf(b) >= now &&
+    onlyDigits(b.client.wa).slice(-10) === d.slice(-10)
+  ).length;
 }
 function myWaMap(){
   try{ return JSON.parse(localStorage.getItem('coastclub.wa') || '{}'); }catch(e){ return {}; }
@@ -1211,6 +1226,8 @@ function viewAjustes(){
     <label class="f"><span>WhatsApp do dono</span><input class="inp" id="s-wa" inputmode="numeric" value="${esc(S.ownerWhats)}" placeholder="(11) 90000-0000"></label>
     <label class="f"><span>Sinal para reservar (%)</span><input class="inp" id="s-dep" inputmode="numeric" value="${depPct()}" placeholder="30"></label>
     <p class="tinynote" style="margin-top:-6px">Percentual cobrado para segurar o horário. O restante é pago na barbearia. Use 0 para não cobrar sinal.</p>
+    <label class="f"><span>Reservas ativas por WhatsApp</span><input class="inp" id="s-maxwa" inputmode="numeric" value="${Number(S.maxActive||0)}" placeholder="1"></label>
+    <p class="tinynote" style="margin-top:-6px">Quantos horários futuros o mesmo número pode ter ao mesmo tempo. 1 impede que uma pessoa encha a agenda. Use 0 para não limitar.</p>
     ${cloud() ? '' : `<label class="f"><span>PIN do painel</span><input class="inp" id="s-pin" inputmode="numeric" maxlength="6" value="${esc(S.pin)}"></label>`}
     <button class="btn" style="margin-top:14px" data-act="save-settings">Salvar ajustes</button>
   </div>
@@ -1259,6 +1276,19 @@ async function toPay(){
   if(dg.length < 10 || dg.length > 11){ toast('WhatsApp com DDD (10 ou 11 dígitos)'); return; }
   if(U.client.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(U.client.email)){ toast('E-mail inválido'); return; }
 
+  // aviso antecipado: este número já tem horário ativo (o banco é quem barra)
+  const max = Number(S.maxActive || 0);
+  if(max > 0){
+    const meus = await API.mine().catch(()=>U.myList||[]);
+    U.myList = meus;
+    const ativos = (meus || []).filter(b => b.status !== 'cancelado' && whenOf(b) >= Date.now()
+      && onlyDigits(b.client.wa).slice(-10) === dg.slice(-10)).length;
+    if(ativos >= max){
+      toast('Você já tem ' + (max>1? max+' horários':'um horário') + ' marcado. Cancele em "Meus" para marcar outro.');
+      U.tab = 'meus'; render(); return;
+    }
+  }
+
   U.quote = normalizaQuote(await API.quote(U.service, U.coupon));
   if(U.quote.coupon && U.coupon) toast('Cupom aplicado: −' + U.quote.coupon_pct + '%');
   else if(U.coupon) toast('Cupom inválido, segue sem desconto');
@@ -1298,7 +1328,8 @@ async function finishPayment(withCard){
       horario_de_almoco:'Esse horário é do almoço.',
       fora_do_horario:'Fora do horário de funcionamento.',
       domingo_fechado:'Domingo é fechado.',
-      horario_passado:'Esse horário já passou.'
+      horario_passado:'Esse horário já passou.',
+      limite_reservas:'Você já tem um horário marcado. Cancele o anterior para marcar outro.'
     })[r.error] || ('Não consegui agendar: ' + r.error);
     toast(msg);
     if(r.error === 'horario_ocupado'){ U.step = 1; U.time = null; await API.pullCatalog(); }
@@ -1475,12 +1506,14 @@ document.addEventListener('click', async e => {
     if(pinEl){ const pin = (pinEl.value || '').trim(); if(/^\d{4,6}$/.test(pin)) S.pin = pin; }
     const depEl = $('#s-dep');
     if(depEl){ const dp = Number(onlyDigits(depEl.value)); if(dp >= 0 && dp <= 100) S.depositPct = dp; }
+    const mwEl = $('#s-maxwa');
+    if(mwEl){ const mw = Number(onlyDigits(mwEl.value)); if(mw >= 0 && mw <= 10) S.maxActive = mw; }
     save(); paintBrand();
 
     if(cloud()){
       try{
         for(const s of updates) await API.saveService(s);
-        await API.saveSettings({ shop:S.shop, handle:S.handle, ownerName:S.ownerName, ownerWhats:S.ownerWhats, openHour:S.openHour, closeHour:S.closeHour, lunchHour:S.lunchHour, depositPct:S.depositPct });
+        await API.saveSettings({ shop:S.shop, handle:S.handle, ownerName:S.ownerName, ownerWhats:S.ownerWhats, openHour:S.openHour, closeHour:S.closeHour, lunchHour:S.lunchHour, depositPct:S.depositPct, maxActive:S.maxActive });
         await API.pullCatalog();
         toast('Ajustes salvos na nuvem');
       }catch(err){ toast('Salvei aqui, mas a nuvem recusou: ' + err.message); }
