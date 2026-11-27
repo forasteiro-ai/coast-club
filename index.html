@@ -378,23 +378,23 @@ const DEFAULTS = {
   handle: '@coastclub_barbershop',
   ownerName: 'Igor',
   ownerWhats: '(11) 99560-6334',
-  openHour: 8,
-  closeHour: 17,
+  openHour: 9,
+  closeHour: 19,
   lunchHour: 12,
   pin: '1234',
   depositPct: 100,
   maxActive: 1,
   holdMinutes: 15,
   services: [
-    { id:'corte-adulto',   name:'Corte Adulto',        price:35, ico:'✂️' },
-    { id:'corte-infantil', name:'Corte Infantil',      price:35, ico:'🧒' },
-    { id:'barba',          name:'Barba',               price:20, ico:'🪒' },
-    { id:'sobrancelha',    name:'Sobrancelha',         price:15, ico:'👁️' },
-    { id:'limpeza',        name:'Limpeza de Pele',     price:30, ico:'🧖' },
-    { id:'luzes',          name:'Luzes',               price:60, ico:'💡' },
-    { id:'nevou',          name:'Platinado / Nevou',   price:75, ico:'🤍' },
-    { id:'pezinho',        name:'Pézinho',             price:15, ico:'🦶' },
-    { id:'risquinho',      name:'Risquinho / Desenho', price:15, ico:'📐' }
+    { id:'corte-adulto',   name:'Corte Adulto',        price:40, ico:'✂️', durationMin:30 },
+    { id:'corte-infantil', name:'Corte Infantil',      price:40, ico:'🧒', durationMin:30 },
+    { id:'barba',          name:'Barba',               price:25, ico:'🪒', durationMin:30 },
+    { id:'sobrancelha',    name:'Sobrancelha',         price:18, ico:'👁️', durationMin:15 },
+    { id:'limpeza',        name:'Limpeza de Pele',     price:35, ico:'🧖', durationMin:30 },
+    { id:'luzes',          name:'Luzes',               price:65, ico:'💡', durationMin:30 },
+    { id:'nevou',          name:'Platinado / Nevou',   price:80, ico:'🤍', durationMin:30 },
+    { id:'pezinho',        name:'Pézinho',             price:15, ico:'🦶', durationMin:30 },
+    { id:'risquinho',      name:'Risquinho / Desenho', price:20, ico:'📐', durationMin:30 }
   ],
   coupons: [ { code:'COAST10', pct:10 } ],
   bookings: [],
@@ -512,7 +512,7 @@ const API = {
       const [set, svc, busy] = await Promise.all([
         this.rest('settings_public?select=*'),
         this.rest('services?select=*&active=eq.true&order=sort.asc'),
-        this.rest('busy_slots?select=date,time')
+        this.rest('busy_slots?select=date,time,duration_min')
       ]);
       const c = set[0] || {};
       if(c.shop) S.shop = c.shop;
@@ -526,9 +526,11 @@ const API = {
       if(c.max_active_per_wa != null) S.maxActive = Number(c.max_active_per_wa);
       if(c.hold_minutes != null) S.holdMinutes = Number(c.hold_minutes);
       if(Array.isArray(svc) && svc.length){
-        S.services = svc.map(s => ({ id:s.id, name:s.name, price:Number(s.price), ico:s.ico }));
+        S.services = svc.map(s => ({ id:s.id, name:s.name, price:Number(s.price), ico:s.ico,
+          durationMin: Number(s.duration_min || 30) }));
       }
-      S.busy = busy.map(b => ({ date:b.date, time:String(b.time).slice(0,5) }));
+      S.busy = busy.map(b => ({ date:b.date, time:String(b.time).slice(0,5),
+        durationMin: Number(b.duration_min || 60) }));
       save();
       return { ok:true };
     }catch(e){
@@ -537,20 +539,28 @@ const API = {
   },
 
   /* ---- cotação oficial do preço (servidor manda) ---- */
-  async quote(serviceId, coupon){
+  async quote(ids, coupon){
+    const lista = Array.isArray(ids) ? ids : (ids ? [ids] : []);
     if(!cloud()){
-      const svc = S.services.find(s => s.id === serviceId) || { price:0 };
+      const svcs = lista.map(id => S.services.find(s => s.id === id)).filter(Boolean);
+      const base = svcs.reduce((t,s) => t + Number(s.price || 0), 0);
+      const dur  = svcs.reduce((t,s) => t + Number(s.durationMin || 30), 0) || 30;
       let pct = 0, code = '';
       const cp = String(coupon || '').trim().toUpperCase();
       if(cp){
         const f = (S.coupons || []).find(c => c.code.toUpperCase() === cp);
         if(f){ pct = f.pct; code = f.code; }
       }
-      const off = Math.round(svc.price * pct) / 100;
-      return { ok:true, base:svc.price, coupon:code || null, coupon_pct:pct, off, total: Math.round((svc.price - off)*100)/100 };
+      const off = Math.round(base * pct) / 100;
+      const total = Math.round((base - off)*100)/100;
+      return { ok:true, base, services:svcs.length, duration:dur,
+               names: svcs.map(s=>s.name).join(' + '),
+               coupon:code || null, coupon_pct:pct, off, total,
+               deposit_pct: S.depositPct || 0,
+               deposit: Math.round(total * (S.depositPct||0)) / 100 };
     }
     try{
-      const r = await this.rpc('quote', { p_service_id: serviceId, p_coupon: coupon || null });
+      const r = await this.rpc('quote_multi', { p_service_ids: lista, p_coupon: coupon || null });
       return r;
     }catch(e){ return { ok:false, error:e.message }; }
   },
@@ -559,17 +569,25 @@ const API = {
   async book(payload){
     if(!cloud()){
       // ---- modo local: valida na hora, igual o servidor faria ----
-      if(S.bookings.some(b => b.date === payload.date && b.time === payload.time && b.status !== 'cancelado')){
-        return { ok:false, error:'horario_ocupado' };
-      }
-      const q = await this.quote(payload.serviceId, payload.coupon);
-      const svc = S.services.find(s => s.id === payload.serviceId) || { name:'—', price:0 };
+      const ids = payload.serviceIds || (payload.serviceId ? [payload.serviceId] : []);
+      const q   = await this.quote(ids, payload.coupon);
+      const dur = Number(q.duration || 30);
+      // sobreposição real: a faixa [time, time+dur) não pode cruzar outra
+      const ini = payload.time, fim = somaMin(ini, dur);
+      const cruza = S.bookings.some(b => b.date === payload.date && b.time
+        && b.status !== 'cancelado'
+        && ini < somaMin(b.time, Number(b.durationMin || 60))
+        && b.time < fim);
+      if(cruza) return { ok:false, error:'horario_ocupado' };
+      const svc = S.services.find(s => s.id === ids[0]) || { name:'—', price:0 };
       const d = fromISO(payload.date);
       const id = 'CC' + pad(d.getDate()) + pad(d.getMonth()+1) + '-' + String(S.seq).padStart(3,'0');
       S.seq++;
       const b = {
         id, code:id, date:payload.date, time:payload.time,
-        serviceId:svc.id, serviceName:svc.name, base:svc.price,
+        serviceId:svc.id, serviceName:q.names || svc.name,
+        serviceIds:ids, serviceNames:q.names || svc.name, durationMin:dur,
+        base:q.base,
         coupon:q.coupon || '', couponPct:q.coupon_pct || 0, total:q.total,
         depositPct: q.deposit_pct || 0, deposit: q.deposit || 0,
         client:{ name:payload.name, wa:payload.wa, email:payload.email || '' },
@@ -582,7 +600,8 @@ const API = {
     }
     try{
       const r = await this.rpc('book_slot', {
-        p_service_id: payload.serviceId, p_date: payload.date, p_time: payload.time + ':00',
+        p_service_ids: payload.serviceIds || (payload.serviceId ? [payload.serviceId] : []),
+        p_date: payload.date, p_time: payload.time + ':00',
         p_name: payload.name, p_wa: payload.wa, p_email: payload.email || null,
         p_coupon: payload.coupon || null, p_method: payload.method, p_last4: payload.last4 || null
       });
@@ -729,7 +748,9 @@ function toLocalShape(b){
     date: b.date,
     time: String(b.time || '').slice(0,5),
     serviceId: b.service_id || b.serviceId,
-    serviceName: b.service_name || b.serviceName,
+    serviceName: b.service_names || b.service_name || b.serviceName,
+    serviceIds: b.service_ids || b.serviceIds || ((b.service_id||b.serviceId) ? [b.service_id||b.serviceId] : []),
+    durationMin: Number(b.duration_min || b.durationMin || 60),
     base: Number(b.base), coupon: b.coupon || '', couponPct: b.coupon_pct || 0,
     total: Number(b.total),
     client: { name: b.client_name || (b.client && b.client.name) || '', wa: b.client_wa || (b.client && b.client.wa) || '', email: b.client_email || (b.client && b.client.email) || '' },
@@ -897,20 +918,66 @@ function isOpenDay(dateStr){
   const d = fromISO(dateStr);
   return d.getDay() !== 0; // fecha domingo
 }
+/* passo da grade de horários (30 min) — é o intervalo entre opções */
+function slotMin(){ return Number(S.slotMinutes || 30); }
+
+/* duração de UM serviço. Sobrancelha é 15; os demais 30. */
+function durServico(id){
+  const sv = S.services.find(x => x.id === id);
+  return Number((sv && sv.durationMin) || slotMin());
+}
+
+/* minutos que a reserva inteira dura = SOMA das durações escolhidas.
+   Corte+barba = 60 · corte+barba+nevou = 90 · só sobrancelha = 15 */
+function duracaoMin(){
+  if(!U.services.length) return slotMin();
+  return U.services.reduce((t,id) => t + durServico(id), 0);
+}
+
+/* "30 min", "1h", "1h30" */
+function fmtDur(min){
+  min = Number(min || 0);
+  const h = Math.floor(min / 60), m = min % 60;
+  if(h && m) return h + 'h' + pad(m);
+  if(h) return h + 'h';
+  return m + ' min';
+}
+
+/* todos os horários da grade: de 30 em 30 (ou slotMinutes), sem o almoço */
 function allSlots(){
   const out = [];
+  const step = slotMin();
   for(let h = S.openHour; h < S.closeHour; h++){
     if(h === S.lunchHour) continue; // almoço bloqueado
-    out.push(pad(h) + ':00');
+    for(let m = 0; m < 60; m += step) out.push(pad(h) + ':' + pad(m));
   }
   return out;
 }
-function isTaken(dateStr, time){
+
+/* soma minutos a um HH:MM */
+function somaMin(t, min){
+  const [h, m] = t.split(':').map(Number);
+  const tot = h * 60 + m + min;
+  return pad(Math.floor(tot / 60)) + ':' + pad(tot % 60);
+}
+/* A reserva que existe ocupa `slots` horários; a que eu vou criar ocupa
+   nSlots(). Duas faixas se cruzam se uma começa antes de a outra terminar.
+   Testar só "mesma hora" não basta: 13:00 com 2 serviços toma 13:30 também. */
+function isTaken(dateStr, time, ignorarId){
+  const inicio = time;
+  const fim    = somaMin(inicio, duracaoMin());
+  // duas faixas [inicio,fim) e [t0,f0) se cruzam quando uma começa
+  // antes de a outra terminar
+  const cruza = (t0, dur) => {
+    const f0 = somaMin(t0, Number(dur) || slotMin());
+    return inicio < f0 && t0 < fim;
+  };
   // na nuvem a lista de ocupados vem do servidor (sem dado de cliente)
   if(cloud() && Array.isArray(S.busy)){
-    if(S.busy.some(b => b.date === dateStr && b.time === time)) return true;
+    if(S.busy.some(b => b.date === dateStr && cruza(b.time, b.durationMin))) return true;
   }
-  return S.bookings.some(b => b.date === dateStr && b.time === time && b.status !== 'cancelado');
+  return S.bookings.some(b => b.date === dateStr && b.id !== ignorarId
+    && b.status !== 'cancelado' && b.time && cruza(b.time, b.durationMin));
 }
 function isPast(dateStr, time){
   const t = fromISO(dateStr);
@@ -918,8 +985,20 @@ function isPast(dateStr, time){
   t.setHours(parts[0], parts[1], 0, 0);
   return t.getTime() <= Date.now();
 }
+/* um horário só serve se a reserva INTEIRA couber: não pode passar do
+   almoço nem do fechamento (o banco recusa; melhor não oferecer) */
+function cabeNoExpediente(time){
+  const [h, m] = time.split(':').map(Number);
+  const inicio = h * 60 + m;
+  const fim = inicio + duracaoMin();
+  const fech = S.closeHour * 60;
+  const alm  = S.lunchHour * 60;
+  if(fim > fech) return false;
+  if(inicio < alm && fim > alm) return false;   // atravessa o almoço
+  return true;
+}
 function freeSlots(dateStr){
-  return allSlots().filter(t => !isTaken(dateStr, t) && !isPast(dateStr, t));
+  return allSlots().filter(t => cabeNoExpediente(t) && !isTaken(dateStr, t) && !isPast(dateStr, t));
 }
 /* primeiro dia (a partir de hoje) que ainda tem horário livre */
 function firstOpenDay(){
@@ -936,7 +1015,7 @@ function firstOpenDay(){
 const U = {
   tab: 'agendar',
   step: 0,
-  service: null,
+  services: [],      // ids dos serviços escolhidos (pode ter vários)
   date: todayISO(),
   time: null,
   client: { name:'', wa:'', email:'' },
@@ -1094,17 +1173,36 @@ function viewAgendar(){
 }
 
 function viewServices(){
+  const escolhidos = U.services;
   const list = S.services.map(s => {
-    const sel = U.service === s.id;
+    const sel = escolhidos.includes(s.id);
+    const ord = escolhidos.indexOf(s.id);
     return `<button class="svc ${sel?'sel':''}" data-act="pick-service" data-id="${esc(s.id)}">
       <span class="ico">${esc(s.ico||'✂️')}</span>
       <span>
         <span class="nm">${esc(s.name)}</span>
-        <span class="mt">1 hora reservada</span>
+        <span class="mt">${fmtDur(durServico(s.id))}</span>
       </span>
-      <span class="pr">${brl(s.price)}<small>1h</small></span>
+      <span class="pr">${brl(s.price)}<small>${sel ? '✓' + (ord+1) : fmtDur(durServico(s.id))}</small></span>
     </button>`;
   }).join('');
+
+  // resumo do que foi escolhido
+  const totalSvc = escolhidos.reduce((t,id) => {
+    const sv = S.services.find(x=>x.id===id); return t + (sv ? Number(sv.price) : 0);
+  }, 0);
+  const resumo = escolhidos.length ? `
+    <div class="card resumo">
+      <div class="l1">
+        <b>${escolhidos.length} serviço${escolhidos.length>1?'s':''}</b>
+        <b>${brl(totalSvc)}</b>
+      </div>
+      <div class="l2">${escolhidos.map(id => {
+        const sv = S.services.find(x=>x.id===id);
+        return sv ? esc(sv.name) : '';
+      }).filter(Boolean).join(' + ')}</div>
+      <div class="l3">⏱ ${fmtDur(duracaoMin())} de cadeira</div>
+    </div>` : '';
 
   return twoPane(`
   <section class="hero">
@@ -1116,7 +1214,7 @@ function viewServices(){
       </div>
     </div>
     <h1>Seu horário, <em>na régua.</em></h1>
-    <p>Escolha o serviço e reserve. Cada horário é seu por 1 hora inteira.</p>
+    <p>Escolha um ou mais serviços. Cada um dura ${fmtDur(slotMin())} e a reserva ocupa o tempo somado.</p>
     <div class="avail">
       <span class="tag"><i>●</i> Seg a Sáb</span>
       <span class="tag"><i>●</i> ${pad(S.openHour)}h às ${pad(S.closeHour)}h</span>
@@ -1131,10 +1229,14 @@ function viewServices(){
   </section>
   `, `
   ${stepsBar(0)}
-  <h2 class="sec">1 · Qual serviço?</h2>
+  <h2 class="sec">1 · Quais serviços?</h2>
+  <p class="hint">Pode escolher mais de um — a ordem não importa.</p>
   ${list}
+  ${resumo}
   <div class="actions">
-    <button class="btn" data-act="go-step" data-step="1" ${U.service?'':'disabled'}>Ver horários</button>
+    <button class="btn" data-act="go-step" data-step="1" ${escolhidos.length?'':'disabled'}>
+      ${escolhidos.length ? 'Ver horários' : 'Escolha ao menos um'}
+    </button>
   </div>
   ${blocoInstalar()}
   <p class="tinynote">${S.ownerName ? esc(S.ownerName) + ' · ' : ''}${esc(S.ownerWhats || '')}${S.ownerWhats ? ' · ' : ''}Pagamento seguro pela InfinitePay.</p>`);
@@ -1148,8 +1250,16 @@ function twoPane(esquerda, direita){
   return `<div class="pane pane-l">${esquerda}</div><div class="pane pane-r">${direita}</div>`;
 }
 
+function nomesEscolhidos(){
+  return U.services.map(id => (S.services.find(x=>x.id===id)||{}).name).filter(Boolean).join(' + ') || '—';
+}
+function totalEscolhido(){
+  return U.services.reduce((t,id) => {
+    const sv = S.services.find(x=>x.id===id); return t + (sv ? Number(sv.price) : 0);
+  }, 0);
+}
+
 function viewDateTime(){
-  const svc = S.services.find(s=>s.id===U.service) || { name:'—', price:0 };
   const base = new Date();
   const chips = [];
   for(let i = 0; i < 28; i++){
@@ -1171,7 +1281,7 @@ function viewDateTime(){
   ${stepsBar(1)}
   <h2 class="sec">2 · Dia e horário</h2>
   <div class="strip">${chips.join('')}</div>
-  <p class="hint">${esc(svc.name)} · ${brl(svc.price)} · 1h reservada</p>
+  <p class="hint">${esc(nomesEscolhidos())} · ${brl(totalEscolhido())} · ${fmtDur(duracaoMin())} de cadeira</p>
   <div class="slots">${slots}</div>
   <p class="hint">${isOpenDay(U.date) ? (nfree ? nfree + ' horário(s) livre(s) em ' + fmtDate(U.date) : (allSlots().every(t => isPast(U.date,t)) ? 'Os horários deste dia já passaram. Escolha outro dia.' : 'Dia lotado, escolha outro.')) : 'Domingo é fechado.'}</p>
   <div class="actions advance">
@@ -1181,16 +1291,18 @@ function viewDateTime(){
 }
 
 function viewDados(){
-  const svc = S.services.find(s=>s.id===U.service) || { name:'—', price:0 };
   return `
   ${stepsBar(2)}
   <h2 class="sec">3 · Seus dados</h2>
   <div class="card">
-    <div style="display:flex;justify-content:space-between;font-size:14px">
-      <span style="color:var(--dim)">${esc(svc.name)}</span><b>${brl(svc.price)}</b>
+    <div style="display:flex;justify-content:space-between;font-size:14px;gap:10px">
+      <span style="color:var(--dim)">${esc(nomesEscolhidos())}</span><b style="white-space:nowrap">${brl(totalEscolhido())}</b>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:14px;margin-top:6px">
-      <span style="color:var(--dim)">${fmtDate(U.date)}</span><b>${U.time}</b>
+      <span style="color:var(--dim)">${fmtDate(U.date)}</span><b>${U.time} – ${somaMin(U.time, duracaoMin())}</b>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px">
+      <span style="color:var(--dim)">Duração</span><span>${fmtDur(duracaoMin())}</span>
     </div>
   </div>
   <label class="f"><span>Nome completo</span>
@@ -1214,7 +1326,7 @@ function viewDados(){
 
 function viewPagamento(){
   const q = U.quote || { base:0, off:0, total:0, coupon:null, coupon_pct:0 };
-  const svc = S.services.find(s=>s.id===U.service) || { name:'—' };
+  const svc = { name: nomesEscolhidos() };
 
   const sum = `
     <div class="sum">
@@ -1557,7 +1669,7 @@ async function toPay(){
     }
   }
 
-  U.quote = normalizaQuote(await API.quote(U.service, U.coupon));
+  U.quote = normalizaQuote(await API.quote(U.services, U.coupon));
   if(U.quote.coupon && U.coupon) toast('Cupom aplicado: −' + U.quote.coupon_pct + '%');
   else if(U.coupon) toast('Cupom inválido, segue sem desconto');
   U.step = 3; render('topo');
@@ -1574,7 +1686,7 @@ async function finishPayment(){
   if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Confirmando…'; }
 
   const r = await API.book({
-    serviceId: U.service, date: U.date, time: U.time,
+    serviceIds: U.services.slice(), date: U.date, time: U.time,
     name: U.client.name, wa: U.client.wa, email: U.client.email,
     coupon: U.coupon, method: U.method, last4
   });
@@ -1622,7 +1734,7 @@ async function finishPayment(){
       toast(motivo);
       // sem gateway, a reserva fica pendente (prazo corre) e some sozinha
       U.step = 4;
-      U.service = null; U.time = null; U.coupon = ''; U.quote = null;
+      U.services = []; U.time = null; U.coupon = ''; U.quote = null;
       U.client = { name:'', wa:'', email:'' };
       render();
       return;
@@ -1636,7 +1748,7 @@ async function finishPayment(){
 
   // modo local (sem nuvem): segue como antes, para demonstração
   U.step = 4;
-  U.service = null; U.time = null; U.coupon = ''; U.quote = null;
+  U.services = []; U.time = null; U.coupon = ''; U.quote = null;
   U.client = { name:'', wa:'', email:'' };
   render();
 }
@@ -1671,12 +1783,19 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  if(act === 'pick-service'){ U.service = el.dataset.id; U.time = null; render('auto'); return; }
+  if(act === 'pick-service'){
+    const id = el.dataset.id;
+    const i = U.services.indexOf(id);
+    if(i >= 0) U.services.splice(i, 1);      // já estava: desmarca
+    else U.services.push(id);                 // senão: marca
+    U.time = null;                            // duração mudou -> horário pode não servir
+    render('auto'); return;
+  }
   if(act === 'pick-date'){ U.date = el.dataset.d; U.time = null; render('auto'); return; }
   if(act === 'pick-time'){ U.time = el.dataset.t; render('elemento'); return; }
   if(act === 'go-step'){
     const n = Number(el.dataset.step);
-    if(n === 1 && !U.service){ toast('Escolha um serviço'); return; }
+    if(n === 1 && !U.services.length){ toast('Escolha ao menos um serviço'); return; }
     if(n === 2 && !U.time){ toast('Escolha um horário'); return; }
     if(n === 1 && !freeSlots(U.date).length){ U.date = firstOpenDay(); U.time = null; }
     U.step = n; render('topo'); return;
