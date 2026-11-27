@@ -998,18 +998,13 @@ function detectaCelular(){
   // iPad moderno se identifica como MacIntel com toque
   const ehIpad = /iPad/.test(ua) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  // Android sem "Mobile" no user agent é tablet
-  const ehAndroidTablet = /Android/i.test(ua) && !/Mobile/i.test(ua);
 
-  const ios = /iPhone|iPod/.test(ua) ||
-    (ehIpad && !ehAndroidTablet);          // iPad entra como iOS
-  const android = /Android/i.test(ua) && !ehAndroidTablet;
+  // "no celular" aqui inclui TABLETS (iPhone e iPad, Android de
+  // qualquer tamanho). O que fica de fora é só computador.
+  const ios = /iPhone|iPod|iPad/.test(ua) || ehIpad;
+  const android = /Android/i.test(ua);
 
-  // tablets ficam de fora: o pedido foi "apenas no celular"
-  const ehTablet = ehIpad || ehAndroidTablet;
-
-  return { ios: ios && !ehTablet, android: android && !ehTablet,
-           movel: (ios || android) && !ehTablet };
+  return { ios: ios && !android, android, ipad: ehIpad, movel: ios || android };
 }
 
 function jaInstalado(){
@@ -1033,19 +1028,19 @@ function blocoInstalar(){
       <div class="box">
         <span class="ico">📱</span>
         <span class="txt">
-          <span class="tt">Instalar no iPhone</span>
+          <span class="tt">Instalar no ${detectaCelular().ipad ? 'iPad' : 'iPhone'}</span>
           <span class="st">Atalho na tela de início, como um app</span>
         </span>
         <button class="go" data-act="instalar-ios">Como</button>
       </div>
       ${U.mostrarPassoIos ? `<div class="passo">
-        <h4>No iPhone, pelo Safari</h4>
+        <h4>No ${detectaCelular().ipad ? 'iPad' : 'iPhone'}, pelo Safari</h4>
         <ol>
-          <li>Toque no ícone de <b>compartilhar</b> (o quadrado com a seta para cima), na barra de baixo.</li>
+          <li>Toque no ícone de <b>compartilhar</b> (o quadrado com a seta para cima) — fica ${detectaCelular().ipad ? 'no topo da tela, ao lado da barra de endereço' : 'na barra de baixo'}.</li>
           <li>Role a lista e toque em <b>Adicionar à Tela de Início</b>.</li>
           <li>Confirme em <b>Adicionar</b>, no canto superior direito.</li>
         </ol>
-        <p class="nota">Precisa ser pelo Safari. No Chrome do iPhone essa opção não aparece.</p>
+        <p class="nota">Precisa ser pelo Safari. Em outros navegadores do ${detectaCelular().ipad ? 'iPad' : 'iPhone'} essa opção não aparece.</p>
         <button class="fechar" data-act="fechar-ios">Entendi</button>
       </div>` : ''}
     </div>`;
