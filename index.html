@@ -326,6 +326,30 @@ nav.tabbar button.on{color:var(--gold2)}
 
 .wa{background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.35);color:#7ddea4}
 .tinynote{font-size:11.5px;color:#6f6f79;margin-top:10px;text-align:center}
+
+/* crédito de quem desenvolveu: discreto, mas presente em toda página */
+.credito{
+  margin-top:auto; padding:22px 0 26px;
+  border-top:1px solid rgba(255,255,255,.055);
+}
+#view{padding-bottom:8px}
+.credito .wrap{
+  display:flex; align-items:center; justify-content:center;
+  gap:10px; flex-wrap:wrap;
+  font-size:11.5px; color:#5f5f6a; letter-spacing:.2px;
+}
+.credito b{color:#8b8b96;font-weight:600}
+.credito a{
+  color:#8b8b96; text-decoration:none;
+  border-bottom:1px solid rgba(255,255,255,.14);
+  padding-bottom:1px; transition:color .18s, border-color .18s;
+}
+.credito a:hover{color:#d9d9de;border-color:rgba(255,255,255,.4)}
+.credito a:active{color:#fff}
+@media (max-width:520px){
+  .credito{padding:18px 0 22px}
+  .credito .wrap{font-size:11px;gap:7px}
+}
 .subnav{display:flex;gap:6px;margin:14px 0 4px;background:var(--bg2);padding:4px;border-radius:12px;border:1px solid var(--line)}
 .subnav button{flex:1;padding:9px;border-radius:9px;font-size:13px;color:var(--dim);font-weight:560}
 .subnav button.on{background:var(--card2);color:var(--txt)}
@@ -360,6 +384,13 @@ nav.tabbar button.on{color:var(--gold2)}
 </nav>
 
 <main id="view" class="wrap"></main>
+
+<footer class="credito">
+  <div class="wrap">
+    <span>Desenvolvido por <b>Carlos Guedes</b></span>
+    <a href="mailto:ch.guedes.dev@gmail.com?subject=Quero%20um%20site%20para%20meu%20neg%C3%B3cio">contato</a>
+  </div>
+</footer>
 
 <div class="toast" id="toast"></div>
 <script>
