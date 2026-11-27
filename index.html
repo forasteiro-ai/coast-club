@@ -1498,8 +1498,7 @@ function viewPin(){
       <input class="inp" id="ownerPass" type="password" autocomplete="current-password" placeholder="••••••••">
     </label>
     ${U.ownerAuthError ? `<p class="hint" style="color:#ff9b9b">${esc(U.ownerAuthError)}</p>` : ''}
-    <div class="actions"><button class="btn" data-act="login-cloud">Entrar</button></div>
-    <p class="tinynote">O acesso é do usuário criado no Supabase e cadastrado como dono na tabela owners.</p>`;
+    <div class="actions"><button class="btn" data-act="login-cloud">Entrar</button></div>`;
   }
   return `
   <div class="hero" style="padding-top:30px">
