@@ -203,6 +203,33 @@ nav.tabbar button.on{color:var(--gold2)}
    O bloco de apresentação (foto + galeria) fica à esquerda como
    painel fixo, e a escolha do serviço à direita.
    ============================================================ */
+/* ---------- instalar como app (só no celular) ---------- */
+.instalar{ display:none; margin:16px 0 0; }
+.instalar.on{ display:block; }
+.instalar .box{
+  display:flex; align-items:center; gap:12px; padding:13px 14px;
+  background:linear-gradient(180deg,rgba(201,162,77,.10),rgba(201,162,77,.03));
+  border:1px solid rgba(201,162,77,.35); border-radius:14px;
+}
+.instalar .box .ico{ font-size:22px; line-height:1; flex:0 0 auto; }
+.instalar .box .txt{ min-width:0; flex:1; }
+.instalar .box .tt{ font-size:13.5px; font-weight:650; }
+.instalar .box .st{ font-size:11.5px; color:var(--dim); margin-top:2px; line-height:1.35; }
+.instalar .box .go{
+  flex:0 0 auto; padding:9px 14px; border-radius:10px; font-size:12.5px; font-weight:680;
+  background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#14100a; white-space:nowrap;
+}
+/* painel que abre explicando o passo a passo */
+.instalar .passo{ margin-top:10px; padding:14px; background:var(--card);
+  border:1px solid var(--line); border-radius:14px; }
+.instalar .passo h4{ margin:0 0 10px; font-size:13px; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--gold2); }
+.instalar ol{ margin:0; padding-left:20px; font-size:13px; line-height:1.7; color:var(--txt); }
+.instalar ol li{ margin-bottom:6px; }
+.instalar .passo .nota{ font-size:11.5px; color:var(--dim); margin-top:10px; line-height:1.5; }
+.instalar .passo .fechar{ margin-top:12px; width:100%; padding:10px; border-radius:10px;
+  background:var(--card2); border:1px solid var(--line); font-size:13px; }
+
 @media (min-width: 900px){
   body{ padding-bottom:24px; }
 
@@ -926,16 +953,133 @@ const U = {
 };
 
 /* ================= RENDER ================= */
-function render(){
+/* Rolagem: cada render substitui o conteúdo de #view. Antes eu chamava
+   scrollTo(0,0) em TODO render, e por isso escolher um horário jogava a
+   página de volta ao topo. Agora a rolagem é decidida por quem manda:
+   `rolar` pode ser 'topo', 'auto' (não mexe) ou 'elemento' (leva o
+   botão de avanço para a área visível). */
+function render(rolar){
   document.querySelectorAll('nav.tabbar button').forEach(b=>{
     b.classList.toggle('on', b.dataset.tab === U.tab);
   });
   const v = $('#view');
+  const antes = rolar !== 'topo' && rolar !== 'auto' && rolar !== 'elemento'
+    ? window.scrollY : null;
+
   if(U.tab === 'agendar') v.innerHTML = U.step === 4 ? viewDone() : viewAgendar();
   else if(U.tab === 'meus') v.innerHTML = viewMeus();
   else v.innerHTML = (U.admin || (cloud() && API.ownerToken())) ? viewPainel() : viewPin();
-  window.scrollTo(0, 0);
+
+  if(rolar === 'topo'){
+    window.scrollTo(0, 0);
+  } else if(rolar === 'elemento'){
+    // leva o botão de avanço para a tela sem pular para o topo
+    const alvo = v.querySelector('.advance') || v.querySelector('.actions');
+    if(alvo){
+      alvo.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  } else if(antes !== null){
+    window.scrollTo(0, antes);   // preserva onde a pessoa estava
+  }
+  // 'auto' = não mexe na rolagem
+
   const pin = $('#pin'); if(pin) setTimeout(()=>pin.focus(), 60);
+}
+
+/* ============================================================
+   INSTALAR COMO APP
+   O site é um PWA: pode ser instalado na tela inicial e abre em
+   tela cheia, sem barra de navegador. Não existe na loja do Google
+   nem da Apple — a instalação é pelo próprio navegador.
+   Os botões só aparecem no celular; no computador não faz sentido.
+   ============================================================ */
+function detectaCelular(){
+  const ua = navigator.userAgent || '';
+  // iPad moderno se identifica como MacIntel com toque
+  const ehIpad = /iPad/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  // Android sem "Mobile" no user agent é tablet
+  const ehAndroidTablet = /Android/i.test(ua) && !/Mobile/i.test(ua);
+
+  const ios = /iPhone|iPod/.test(ua) ||
+    (ehIpad && !ehAndroidTablet);          // iPad entra como iOS
+  const android = /Android/i.test(ua) && !ehAndroidTablet;
+
+  // tablets ficam de fora: o pedido foi "apenas no celular"
+  const ehTablet = ehIpad || ehAndroidTablet;
+
+  return { ios: ios && !ehTablet, android: android && !ehTablet,
+           movel: (ios || android) && !ehTablet };
+}
+
+function jaInstalado(){
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+
+let promptAndroid = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();          // segura o banner automático
+  promptAndroid = e;           // guarda para usar no nosso botão
+  pintarInstalar();
+});
+
+function blocoInstalar(){
+  const d = detectaCelular();
+  if(!d.movel || jaInstalado()) return '';
+
+  if(d.ios){
+    return `<div class="instalar on" id="instalar">
+      <div class="box">
+        <span class="ico">📱</span>
+        <span class="txt">
+          <span class="tt">Instalar no iPhone</span>
+          <span class="st">Atalho na tela de início, como um app</span>
+        </span>
+        <button class="go" data-act="instalar-ios">Como</button>
+      </div>
+      ${U.mostrarPassoIos ? `<div class="passo">
+        <h4>No iPhone, pelo Safari</h4>
+        <ol>
+          <li>Toque no ícone de <b>compartilhar</b> (o quadrado com a seta para cima), na barra de baixo.</li>
+          <li>Role a lista e toque em <b>Adicionar à Tela de Início</b>.</li>
+          <li>Confirme em <b>Adicionar</b>, no canto superior direito.</li>
+        </ol>
+        <p class="nota">Precisa ser pelo Safari. No Chrome do iPhone essa opção não aparece.</p>
+        <button class="fechar" data-act="fechar-ios">Entendi</button>
+      </div>` : ''}
+    </div>`;
+  }
+
+  // Android
+  return `<div class="instalar on" id="instalar">
+    <div class="box">
+      <span class="ico">🤖</span>
+      <span class="txt">
+        <span class="tt">Instalar no Android</span>
+        <span class="st">Atalho na tela de início, como um app</span>
+      </span>
+      <button class="go" data-act="instalar-android">Instalar</button>
+    </div>
+    ${U.mostrarPassoAndroid ? `<div class="passo">
+      <h4>Instalar no Android</h4>
+      <ol>
+        <li>Abra o menu do navegador (os três pontinhos, no canto superior direito).</li>
+        <li>Toque em <b>Instalar aplicativo</b> ou <b>Adicionar à tela inicial</b>.</li>
+        <li>Confirme em <b>Instalar</b>.</li>
+      </ol>
+      <p class="nota">Se a opção não aparecer, o navegador pode ser antigo — atualize o Chrome.</p>
+      <button class="fechar" data-act="fechar-android">Entendi</button>
+    </div>` : ''}
+  </div>`;
+}
+
+/* atualiza só o bloco, sem redesenhar a tela toda */
+function pintarInstalar(){
+  const d = detectaCelular();
+  const box = document.querySelector('.instalar');
+  if(!box) return;
+  box.classList.toggle('on', d.movel && !jaInstalado());
 }
 
 function stepsBar(n){
@@ -997,6 +1141,7 @@ function viewServices(){
   <div class="actions">
     <button class="btn" data-act="go-step" data-step="1" ${U.service?'':'disabled'}>Ver horários</button>
   </div>
+  ${blocoInstalar()}
   <p class="tinynote">${S.ownerName ? esc(S.ownerName) + ' · ' : ''}${esc(S.ownerWhats || '')}${S.ownerWhats ? ' · ' : ''}Pagamento seguro pela InfinitePay.</p>`);
 }
 
@@ -1034,7 +1179,7 @@ function viewDateTime(){
   <p class="hint">${esc(svc.name)} · ${brl(svc.price)} · 1h reservada</p>
   <div class="slots">${slots}</div>
   <p class="hint">${isOpenDay(U.date) ? (nfree ? nfree + ' horário(s) livre(s) em ' + fmtDate(U.date) : (allSlots().every(t => isPast(U.date,t)) ? 'Os horários deste dia já passaram. Escolha outro dia.' : 'Dia lotado, escolha outro.')) : 'Domingo é fechado.'}</p>
-  <div class="actions">
+  <div class="actions advance">
     <button class="btn ghost sm" data-act="go-step" data-step="0">Voltar</button>
     <button class="btn" data-act="go-step" data-step="2" ${U.time?'':'disabled'}>Continuar</button>
   </div>`;
@@ -1420,7 +1565,7 @@ async function toPay(){
   U.quote = normalizaQuote(await API.quote(U.service, U.coupon));
   if(U.quote.coupon && U.coupon) toast('Cupom aplicado: −' + U.quote.coupon_pct + '%');
   else if(U.coupon) toast('Cupom inválido, segue sem desconto');
-  U.step = 3; render();
+  U.step = 3; render('topo');
 }
 
 async function finishPayment(){
@@ -1526,25 +1671,42 @@ document.addEventListener('click', async e => {
   if(act === 'tab'){
     U.tab = el.dataset.tab;
     if(U.tab === 'agendar' && U.step === 4) U.step = 0;
-    render();
+    render('topo');
     if(U.tab === 'meus') await loadMine();
     return;
   }
 
-  if(act === 'pick-service'){ U.service = el.dataset.id; U.time = null; render(); return; }
-  if(act === 'pick-date'){ U.date = el.dataset.d; U.time = null; render(); return; }
-  if(act === 'pick-time'){ U.time = el.dataset.t; render(); return; }
+  if(act === 'pick-service'){ U.service = el.dataset.id; U.time = null; render('auto'); return; }
+  if(act === 'pick-date'){ U.date = el.dataset.d; U.time = null; render('auto'); return; }
+  if(act === 'pick-time'){ U.time = el.dataset.t; render('elemento'); return; }
   if(act === 'go-step'){
     const n = Number(el.dataset.step);
     if(n === 1 && !U.service){ toast('Escolha um serviço'); return; }
     if(n === 2 && !U.time){ toast('Escolha um horário'); return; }
     if(n === 1 && !freeSlots(U.date).length){ U.date = firstOpenDay(); U.time = null; }
-    U.step = n; render(); return;
+    U.step = n; render('topo'); return;
   }
   if(act === 'to-pay'){ await toPay(); return; }
-  if(act === 'method'){ U.method = el.dataset.m; render(); return; }
+  if(act === 'method'){ U.method = el.dataset.m; render('auto'); return; }
   if(act === 'pay'){ await finishPayment(); return; }
-  if(act === 'new'){ U.step = 0; U.tab = 'agendar'; render(); return; }
+  if(act === 'new'){ U.step = 0; U.tab = 'agendar'; render('topo'); return; }
+
+  /* instalar como app */
+  if(act === 'instalar-android'){
+    if(promptAndroid){
+      promptAndroid.prompt();                      // abre o instalador nativo
+      const r = await promptAndroid.userChoice;
+      if(r.outcome === 'accepted') toast('Instalando… procure o Coast Club na tela inicial');
+      promptAndroid = null;
+    } else {
+      U.mostrarPassoAndroid = !U.mostrarPassoAndroid;
+      render('auto');                              // sem prompt: mostra o passo a passo
+    }
+    return;
+  }
+  if(act === 'fechar-android'){ U.mostrarPassoAndroid = false; render('auto'); return; }
+  if(act === 'instalar-ios'){ U.mostrarPassoIos = !U.mostrarPassoIos; render('auto'); return; }
+  if(act === 'fechar-ios'){ U.mostrarPassoIos = false; render('auto'); return; }
   if(act === 'meus-cancel'){
     const id = el.dataset.id;
     if(!confirm('Cancelar este horário?')) return;
