@@ -271,9 +271,13 @@ nav.tabbar button.on{color:var(--gold2)}
   #view > .steps, #view > h2.sec, #view > .card, #view > .strip,
   #view > .slots, #view > .opt, #view > .sum, #view > .actions,
   #view > .tinynote, #view > .subnav, #view > .kpi, #view > .bk,
-  #view > .empty, #view > .depbox, #view > .done-hero, #view > .hero-logo{
+  #view > .empty, #view > .depbox, #view > .done-hero, #view > .hero-logo,
+  #view > label.f, #view > .inp, #view > .passo{
     grid-column:1 / -1; max-width:720px; width:100%; margin-left:auto; margin-right:auto;
   }
+  /* telas de um passo só (login do painel, dados do cliente) precisam
+     ficar alinhadas: sem o label.f na lista acima, o e-mail caía na
+     coluna da direita e a senha na da esquerda. */
 
   /* tipografia com mais presença */
   .hero{ padding:0; }
