@@ -195,6 +195,89 @@ nav.tabbar button.on{color:var(--gold2)}
 .depbox .strong{color:#ffd98a;font-weight:700}
 .depbox ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.6;color:#e8e2d4}
 .depbox li{margin-bottom:4px}
+/* ============================================================
+   LAYOUT PARA TELA GRANDE (notebook/desktop)
+   No celular NADA muda: tudo abaixo vive dentro de @media.
+   A ideia: em vez de uma coluna de 560px perdida no meio de uma
+   tela de 1500px, a página usa a largura toda em duas colunas.
+   O bloco de apresentação (foto + galeria) fica à esquerda como
+   painel fixo, e a escolha do serviço à direita.
+   ============================================================ */
+@media (min-width: 900px){
+  body{ padding-bottom:24px; }
+
+  /* cabeçalho e navegação acompanham a largura da página */
+  .wrap{ max-width:1180px; padding:0 32px; }
+  .top .wrap{ height:72px; }
+  .brand b{ font-size:16px; }
+  .brand span{ font-size:12.5px; }
+  /* as abas já dizem "Agendar": a pill do header seria duplicata */
+  header.top .pill{ display:none; }
+
+  /* a barra de navegação sobe para o topo, à direita */
+  nav.tabbar{
+    position:sticky; top:72px; left:auto; right:auto; bottom:auto;
+    padding:0 32px 10px; background:none; backdrop-filter:none; border:0; z-index:19;
+    max-width:1180px; margin:0 auto;
+  }
+  nav.tabbar .in{ max-width:none; justify-content:flex-end; gap:6px; padding:0; }
+  nav.tabbar button{
+    flex:0 0 auto; display:flex; gap:7px; padding:9px 16px; border-radius:999px;
+    font-size:13.5px; letter-spacing:0; width:auto;
+    background:var(--card); border:1px solid var(--line);
+  }
+  nav.tabbar button .g{ font-size:15px; }
+  nav.tabbar button.on{
+    color:#14100a; background:linear-gradient(180deg,var(--gold2),var(--gold));
+    border-color:transparent;
+  }
+
+  /* DUAS COLUNAS: apresentação à esquerda (fixa), formulário à direita */
+  #view{ display:grid; grid-template-columns:minmax(0,1fr) minmax(420px,500px);
+    gap:44px; align-items:start; padding-top:10px; }
+  .pane{ display:flex; flex-direction:column; min-width:0; }
+  .pane-l{ position:sticky; top:88px; }
+  .pane-r{ gap:0; }
+
+  /* nas telas de uma coluna só (horário, dados, pagamento) o conteúdo
+     centraliza em vez de esticar pela largura toda */
+  #view > .steps, #view > h2.sec, #view > .card, #view > .strip,
+  #view > .slots, #view > .opt, #view > .sum, #view > .actions,
+  #view > .tinynote, #view > .subnav, #view > .kpi, #view > .bk,
+  #view > .empty, #view > .depbox, #view > .done-hero, #view > .hero-logo{
+    grid-column:1 / -1; max-width:720px; width:100%; margin-left:auto; margin-right:auto;
+  }
+
+  /* tipografia com mais presença */
+  .hero{ padding:0; }
+  .hero h1{ font-size:36px; }
+  .hero p{ font-size:15.5px; max-width:46ch; }
+  .herophoto{ aspect-ratio:16/11; margin-bottom:18px; }
+  .herophoto .cap .tt{ font-size:17px; }
+  .gal{ margin-top:18px; }
+  .gal .wide{ aspect-ratio:16/9; }
+  .gal img{ aspect-ratio:1/1; }
+  h2.sec{ margin-top:0; }
+  .svc{ padding:16px; }
+  .svc .nm{ font-size:16px; }
+  .slots{ grid-template-columns:repeat(4,1fr); }
+  .toast{ bottom:28px; }
+}
+@media (min-width:1400px){
+  .wrap, nav.tabbar{ max-width:1320px; }
+  #view{ grid-template-columns:minmax(0,1fr) minmax(480px,600px); gap:56px; }
+  .hero h1{ font-size:44px; }
+  .herophoto{ aspect-ratio:16/10; }
+}
+/* telas médias (tablet deitado): uma coluna, mas mais larga */
+@media (min-width:720px) and (max-width:899px){
+  .wrap{ max-width:720px; padding:0 28px; }
+  nav.tabbar .in{ max-width:720px; }
+  .hero h1{ font-size:32px; }
+  .herophoto{ aspect-ratio:16/10; }
+  .slots{ grid-template-columns:repeat(5,1fr); }
+}
+
 .toast{position:fixed;left:50%;bottom:104px;transform:translate(-50%,14px);z-index:60;
   background:#23232b;border:1px solid var(--line);color:var(--txt);font-size:13.5px;
   padding:11px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);
@@ -241,8 +324,6 @@ nav.tabbar button.on{color:var(--gold2)}
   </div>
 </header>
 
-<main id="view" class="wrap"></main>
-
 <nav class="tabbar">
   <div class="in">
     <button data-act="tab" data-tab="agendar" id="tb-agendar"><span class="g">✂️</span>Agendar</button>
@@ -250,6 +331,8 @@ nav.tabbar button.on{color:var(--gold2)}
     <button data-act="tab" data-tab="painel" id="tb-painel"><span class="g">💈</span>Painel</button>
   </div>
 </nav>
+
+<main id="view" class="wrap"></main>
 
 <div class="toast" id="toast"></div>
 <script>
@@ -884,7 +967,7 @@ function viewServices(){
     </button>`;
   }).join('');
 
-  return `
+  return twoPane(`
   <section class="hero">
     <div class="herophoto">
       <img src="fachada.jpg" alt="Fachada da Coast Club Barber Shop ao entardecer">
@@ -901,19 +984,28 @@ function viewServices(){
       <span class="tag"><i>●</i> Almoço ${pad(S.lunchHour)}h</span>
       ${cloudBadge()}
     </div>
+    <section class="gal">
+      <img class="wide" src="ambiente.jpg" alt="Salão da Coast Club com cadeira de barbeiro e porta para a varanda">
+      <img src="cadeira.jpg" alt="Cadeira de barbeiro e prateleira de produtos">
+      <img src="espera.jpg" alt="Sala de espera com sofá e televisão">
+    </section>
   </section>
+  `, `
   ${stepsBar(0)}
-  <section class="gal">
-    <img class="wide" src="ambiente.jpg" alt="Salão da Coast Club com cadeira de barbeiro e porta para a varanda">
-    <img src="cadeira.jpg" alt="Cadeira de barbeiro e prateleira de produtos">
-    <img src="espera.jpg" alt="Sala de espera com sofá e televisão">
-  </section>
   <h2 class="sec">1 · Qual serviço?</h2>
   ${list}
   <div class="actions">
     <button class="btn" data-act="go-step" data-step="1" ${U.service?'':'disabled'}>Ver horários</button>
   </div>
-  <p class="tinynote">${S.ownerName ? esc(S.ownerName) + ' · ' : ''}${esc(S.ownerWhats || '')}${S.ownerWhats ? ' · ' : ''}Pagamento seguro pela InfinitePay.</p>`;
+  <p class="tinynote">${S.ownerName ? esc(S.ownerName) + ' · ' : ''}${esc(S.ownerWhats || '')}${S.ownerWhats ? ' · ' : ''}Pagamento seguro pela InfinitePay.</p>`);
+}
+
+/* Duas colunas no notebook, uma no celular.
+   A esquerda é apresentação (fica fixa ao rolar); a direita é o
+   formulário da reserva. No celular o CSS desfaz o grid e os dois
+   blocos aparecem em sequência, como sempre foi. */
+function twoPane(esquerda, direita){
+  return `<div class="pane pane-l">${esquerda}</div><div class="pane pane-r">${direita}</div>`;
 }
 
 function viewDateTime(){
