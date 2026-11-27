@@ -1272,8 +1272,12 @@ function viewDateTime(){
   }
   const slots = allSlots().map(t => {
     const taken = isTaken(U.date, t), past = isPast(U.date, t);
-    const off = taken || past || !isOpenDay(U.date);
-    return `<button class="slot ${U.time===t?'sel':''} ${taken?'taken':''}" data-act="pick-time" data-t="${t}" ${off?'disabled':''}>${t}</button>`;
+    // cabeNoExpediente: a reserva INTEIRA tem que caber antes do almoço
+    // e do fechamento. Sem isto a grade oferecia 18:30 para uma reserva
+    // de 1h30, e o cliente só descobria o problema ao pagar.
+    const naoCabe = !cabeNoExpediente(t);
+    const off = taken || past || naoCabe || !isOpenDay(U.date);
+    return `<button class="slot ${U.time===t?'sel':''} ${taken?'taken':''} ${naoCabe?'nocab':''}" data-act="pick-time" data-t="${t}" ${off?'disabled':''}>${t}</button>`;
   }).join('');
   const nfree = freeSlots(U.date).length;
 
