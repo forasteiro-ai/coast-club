@@ -431,7 +431,7 @@ const DEFAULTS = {
     { id:'pezinho',        name:'Pézinho',             price:15, ico:'🦶', durationMin:30 },
     { id:'risquinho',      name:'Risquinho / Desenho', price:20, ico:'📐', durationMin:30 }
   ],
-  coupons: [ { code:'COAST10', pct:10 } ],
+  coupons: [],   // cupons ficam no banco; nada de código fixo no arquivo publicado
   bookings: [],
   seq: 1,
   catalogVersion: CATALOG_VERSION
@@ -1354,7 +1354,7 @@ function viewDados(){
     <input class="inp" id="i-email" inputmode="email" placeholder="voce@email.com" value="${esc(U.client.email)}" autocomplete="email">
   </label>
   <label class="f"><span>Cupom de desconto (opcional)</span>
-    <input class="inp" id="i-coupon" placeholder="Ex: COAST10" value="${esc(U.coupon)}" autocapitalize="characters">
+    <input class="inp" id="i-coupon" placeholder="Digite o código" value="${esc(U.coupon)}" autocapitalize="characters">
   </label>
   <div class="actions">
     <button class="btn ghost sm" data-act="go-step" data-step="1">Voltar</button>
